@@ -1,6 +1,7 @@
 import type { UserProfile } from '../types';
 import { getCantonConfig } from './cantonConfig';
 import { getMarginalRateSimple } from './taxBrackets';
+import { cleanNumber } from './numberUtils';
 
 interface Action {
   id: string;
@@ -74,9 +75,9 @@ function Steps({ items }: { items: string[] }) {
 export function getExplanation(action: Action, profile: UserProfile): Explanation {
   const cc = getCantonConfig(profile.canton);
   const isCouple = profile.situation === 'couple';
-  const income = Number(profile.income) || 0;
+  const income = cleanNumber(profile.income);
   const annualIncome = income * 12;
-  const children = Number(profile.children) || 0;
+  const children = cleanNumber(profile.children);
 
   const marginalRate = getMarginalRateSimple(annualIncome, profile.canton ?? 'VS', profile.situation ?? 'single');
   const rPct = Math.round(marginalRate * 100);

@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { cleanNumber } from './utils/numberUtils';
+import { LegalDisclaimer } from './components/Shared/LegalDisclaimer';
 import { Sidebar } from './components/Layout/Sidebar';
 import { ActionsTab } from './components/Tabs/Actions';
 import { TimelineTab } from './components/Tabs/Timeline';
@@ -35,7 +37,7 @@ function Onboarding({ onComplete }: { onComplete: (data: any) => void }) {
       canton,
       situation: sit,
       children,
-      income: Number(income),
+      income: cleanNumber(income),
       permit,
       housing,
       activity: 'employee',
@@ -244,6 +246,7 @@ function App() {
               {activeTab === 'fiche'    && <FicheTab />}
               {activeTab === 'jumeau'   && <ComingSoon label="Jumeau fiscal" />}
               {activeTab === 'decla'    && <DeclaTab />}
+              <LegalDisclaimer compact />
             </div>
           </div>
         </div>

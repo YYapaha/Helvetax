@@ -1,13 +1,14 @@
 import type { UserProfile, Action } from '../types';
 import { getMarginalRateSimple } from './taxBrackets';
+import { cleanNumber } from './numberUtils';
 
 export function generateActions(profile: UserProfile): Action[] {
   const actions: Action[] = [];
   const isCouple = profile.situation === 'couple';
-  const income = parseInt(profile.income.toString()) || 0;
+  const income = cleanNumber(profile.income);
   const annualIncome = income * 12;
   const canton = profile.canton;
-  const children = parseInt(profile.children.toString()) || 0;
+  const children = cleanNumber(profile.children);
 
   const marginalRate = getMarginalRateSimple(annualIncome, canton, profile.situation ?? 'single');
 
@@ -568,6 +569,5 @@ export function generateActions(profile: UserProfile): Action[] {
     why: 'Les frais de déménagement professionnel sont déductibles.',
     checklist: ['Contrat nouvel employeur', 'Factures déménageur', 'Preuve distance avant/après'],
   });
-
   return actions;
 }
