@@ -1,16 +1,52 @@
-# React + Vite
+# Helvetax
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Optimiseur fiscal personnel pour résidents suisses — Bêta privée 2026.
 
-Currently, two official plugins are available:
+Calculs 100 % locaux, aucune donnée transmise à un serveur.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- React 19 + Vite 8 + TypeScript
+- Tailwind CSS v4
+- Zustand 5 (persistence localStorage)
 
-## Expanding the ESLint configuration
+## Fonctionnalités
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+| Onglet | Description |
+|--------|-------------|
+| **Actions** | 42 leviers fiscaux personnalisés selon profil (canton, permis, situation) |
+| **Timeline** | Calendrier des échéances fiscales 2026 |
+| **Impact** | Graphique CHF économisé par catégorie + taux marginal/effectif |
+| **Lexique** | 35 termes fiscaux suisses avec définitions et sources officielles |
+| **Ma fiche** | Récapitulatif du profil fiscal |
+| **Déclaration** | Aide à la déclaration avec simulation |
+
+## Cantons supportés
+
+VS · VD · GE · NE
+
+## Calculs
+
+- Barèmes IFD 2026 officiels (ESTV) — barème A (célibataires) et B (couples)
+- Barèmes cantonaux recalibrés sur données VStax / taxcalculator.ch
+- Taux marginal par différence finie (Δ 1 000 CHF)
+- Revenu imposable estimé à 80 % du brut (déductions forfaitaires standard)
+
+## Lancement
+
+```bash
+npm install
+npm run dev
+```
+
+## Sources
+
+- [ESTV — Barèmes IFD 2026](https://www.estv.admin.ch/fr/impot-federal-direct)
+- [vs.ch — Service cantonal des contributions](https://www.vs.ch/web/scc)
+- [admin.ch — Pilier 3a](https://www.admin.ch/fr/newnsb/xgRMirCsezICX4rtof9Lm)
+
+---
+
+> Données indicatives — non contractuelles. En cas de doute, consultez votre service cantonal des contributions ou un expert fiscal.
