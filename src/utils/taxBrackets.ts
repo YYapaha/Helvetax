@@ -1,29 +1,31 @@
 /**
- * taxBrackets.ts — Barèmes fiscaux officiels 2026
+ * taxBrackets.ts — Moteur fiscal officiel 2026
  *
  * Sources:
- *  - IFD (fédéral) : estv.admin.ch — barèmes valables dès 01.01.2026
- *  - Cantonaux     : approximations basées sur barèmes officiels VS/VD/GE/NE
- *                    (à affiner avec fiscalData2026.json une fois parsé)
+ *  - IFD (fédéral)  : ESTV — barèmes A/B valables dès 01.01.2026
+ *  - IS cantonaux   : AFC — fiscalData2026.json (barèmes officiels VS/VD/GE/NE)
+ *                    Taux effectif TOTAL (IFD + cantonal + communal chef-lieu)
+ *                    appliqué directement au revenu mensuel brut.
  *
  * Usage:
- *   getMarginalRate(revenuAnnuelBrut, canton, situation)
- *   → taux marginal combiné (IFD + cantonal + communal)
+ *   getMarginalRate(annualGrossIncome, canton, situation)
+ *   → taux marginal combiné (IFD + cantonal + communal), impôt total CHF, etc.
  */
 
 import type { Canton } from './cantonConfig';
+import { getIsRate, getBaremeCode } from './afcTariffs';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface TaxBreakdown {
   marginalRate:    number;  // taux marginal combiné (0–1), différence finie sur 1 000 CHF
-  ifdRate:         number;  // part IFD marginale
-  cantonalRate:    number;  // part cantonale marginale (coefficient inclus)
-  totalTaxChf:     number;  // impôt total estimé en CHF (IFD + cantonal + communal)
+  ifdRate:         number;  // part IFD marginale (sur le CHF suivant)
+  cantonalRate:    number;  // part cantonale marginale (communal inclus)
+  totalTaxChf:     number;  // impôt IS total en CHF (IFD + cantonal + communal)
   ifdTaxChf:       number;  // part IFD en CHF
   cantonalTaxChf:  number;  // part cantonale+communale en CHF
-  effectiveRate:   number;  // taux effectif = totalTaxChf / revenuImposable
-  isOfficial:      boolean; // true si barème exact, false si approximation
+  effectiveRate:   number;  // taux effectif = totalTaxChf / revenuBrut annuel
+  isOfficial:      boolean; // toujours true (données AFC officielles)
 }
 
 interface Bracket {
@@ -33,6 +35,7 @@ interface Bracket {
 
 // ── IFD 2026 — barème A (célibataires) ───────────────────────────────────────
 // Source: ESTV — circulaire 2026, barème A personnes seules
+// Utilisé uniquement pour isoler la part IFD dans le total IS.
 const IFD_A: Bracket[] = [
   { from: 0,        rate: 0.0000 },
   { from: 14_500,   rate: 0.0077 },
@@ -64,63 +67,24 @@ const IFD_B: Bracket[] = [
   { from: 143_100,  rate: 0.1150 },
 ];
 
-// ── Barèmes cantonaux marginaux (taux de base, sans coefficient communal) ─────
-// Approximations basées sur les barèmes officiels cantonaux 2026.
-// À remplacer par fiscalData2026.json lorsque le pipeline AFC est intégré.
+// ── Constantes conservées pour compatibilité API ──────────────────────────────
 
-// Taux marginaux CANTONAUX de base (avant coefficient communal)
-// Recalibrés pour que IFD + cantonal × coeff = taux réel observable (VStax, taxcalculator)
-// Validation : VS Sion 80k → ~20%, 130k → ~30%, 200k → ~36%
-const CANTONAL_A: Record<string, Bracket[]> = {
-  VS: [
-    { from: 0,        rate: 0.000 },
-    { from: 12_000,   rate: 0.050 },
-    { from: 25_000,   rate: 0.090 },
-    { from: 40_000,   rate: 0.110 },
-    { from: 60_000,   rate: 0.130 },
-    { from: 80_000,   rate: 0.150 },
-    { from: 120_000,  rate: 0.160 },
-    { from: 180_000,  rate: 0.170 },
-  ],
-  VD: [
-    { from: 0,        rate: 0.000 },
-    { from: 14_000,   rate: 0.055 },
-    { from: 30_000,   rate: 0.090 },
-    { from: 60_000,   rate: 0.115 },
-    { from: 100_000,  rate: 0.130 },
-    { from: 150_000,  rate: 0.140 },
-  ],
-  GE: [
-    { from: 0,        rate: 0.000 },
-    { from: 16_000,   rate: 0.060 },
-    { from: 35_000,   rate: 0.110 },
-    { from: 70_000,   rate: 0.140 },
-    { from: 120_000,  rate: 0.160 },
-    { from: 180_000,  rate: 0.170 },
-  ],
-  NE: [
-    { from: 0,        rate: 0.000 },
-    { from: 12_000,   rate: 0.055 },
-    { from: 25_000,   rate: 0.090 },
-    { from: 55_000,   rate: 0.115 },
-    { from: 100_000,  rate: 0.130 },
-    { from: 150_000,  rate: 0.140 },
-  ],
-};
-
-// Coefficients communaux par défaut (moyenne pondérée ville principale)
-// VS: Sion=1.30, VD: Lausanne=1.345 (79.5% de l'impôt cantonal), GE: uniforme=1.0, NE: ~1.0
+/**
+ * Coefficients communaux de référence par canton.
+ * Note: Ces valeurs sont intégrées dans les taux AFC (fiscalData2026.json)
+ * et ne sont plus utilisées dans le calcul. Conservées pour compatibilité.
+ */
 export const DEFAULT_COMMUNAL_COEFF: Record<string, number> = {
   VS: 1.30,   // Sion — source: vs.ch 2026
   VD: 1.345,  // Lausanne — source: vd.ch 2026
-  GE: 1.00,   // Genève: pas de coefficient (taux uniforme)
+  GE: 1.00,   // Genève: uniforme (déjà intégré dans le barème AFC)
   NE: 1.00,   // Neuchâtel: intégré dans le barème cantonal
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
- * Calcule l'impôt total (CHF) par cumul progressif sur les tranches.
+ * Calcule l'impôt total (CHF) par cumul progressif sur les tranches IFD.
  * Chaque `rate` est le taux marginal sur l'excédent de ce palier.
  */
 function calcTotalTax(income: number, brackets: Bracket[]): number {
@@ -140,43 +104,68 @@ function calcTotalTax(income: number, brackets: Bracket[]): number {
 
 /**
  * Retourne le taux marginal combiné (IFD + cantonal + communal) via différence finie,
- * ainsi que l'impôt total en CHF et le taux effectif.
+ * ainsi que l'impôt total IS en CHF et le taux effectif.
  *
- * @param annualGrossIncome  Revenu brut annuel CHF (avant déductions)
- * @param canton             Code canton: 'VS' | 'VD' | 'GE' | 'NE'
+ * Le total IS provient des barèmes AFC officiels (fiscalData2026.json).
+ * Le taux IFD est calculé séparément via les tranches ESTV sur revenu imposable estimé
+ * (80 % du brut) pour permettre la ventilation IFD / cantonal.
+ *
+ * @param annualGrossIncome  Revenu brut annuel CHF
+ * @param canton             'VS' | 'VD' | 'GE' | 'NE'
  * @param situation          'single' | 'couple'
- * @param communalCoeff      Coefficient communal (défaut = DEFAULT_COMMUNAL_COEFF[canton])
+ * @param communalCoeff      Ignoré (communal inclus dans AFC) — conservé pour compatibilité API
+ * @param children           Nombre d'enfants à charge (0–9, défaut 0)
  */
 export function getMarginalRate(
   annualGrossIncome: number,
   canton:            Canton = 'VS',
   situation:         string = 'single',
-  communalCoeff?:    number,
+  communalCoeff?:    number,  // eslint-disable-line @typescript-eslint/no-unused-vars
+  children:          number = 0,
 ): TaxBreakdown {
-  // Revenu imposable estimé (déductions forfaitaires standard ~20%)
-  const taxable = Math.max(0, Math.round(annualGrossIncome * 0.80));
-  const delta   = 1_000; // CHF — palier différence finie
+  if (annualGrossIncome <= 0) {
+    return {
+      marginalRate: 0, ifdRate: 0, cantonalRate: 0,
+      totalTaxChf: 0, ifdTaxChf: 0, cantonalTaxChf: 0,
+      effectiveRate: 0, isOfficial: true,
+    };
+  }
 
-  const ifdBrackets    = situation === 'couple' ? IFD_B : IFD_A;
-  const cantonBrackets = CANTONAL_A[canton] ?? CANTONAL_A['VS'];
-  const coeff          = communalCoeff ?? DEFAULT_COMMUNAL_COEFF[canton] ?? 1.30;
+  const delta    = 1_000;  // CHF/an — palier différence finie
+  const sit      = situation === 'couple' ? 'couple' : 'single' as const;
+  const bareme   = getBaremeCode(sit, children, canton);
 
-  // Impôts totaux en CHF
-  const ifdTax0       = calcTotalTax(taxable, ifdBrackets);
-  const ifdTax1       = calcTotalTax(taxable + delta, ifdBrackets);
-  const cantonTax0    = calcTotalTax(taxable, cantonBrackets) * coeff;
-  const cantonTax1    = calcTotalTax(taxable + delta, cantonBrackets) * coeff;
+  // ── Total IS via AFC (barème officiel) ──────────────────────────────────────
+  const monthly0  = annualGrossIncome / 12;
+  const monthly1  = (annualGrossIncome + delta) / 12;
+  const isRate0   = getIsRate(monthly0, canton, bareme);
+  const isRate1   = getIsRate(monthly1, canton, bareme);
 
-  // Taux marginaux par différence finie
+  const totalTax0 = annualGrossIncome * isRate0;
+  const totalTax1 = (annualGrossIncome + delta) * isRate1;
+
+  // ── Part IFD via tranches ESTV (pour ventilation informationnelle) ───────────
+  // Revenu imposable estimé à 80 % du brut (forfait déductions)
+  const taxable     = Math.round(annualGrossIncome * 0.80);
+  const taxable1    = Math.round((annualGrossIncome + delta) * 0.80);
+  const ifdBrackets = situation === 'couple' ? IFD_B : IFD_A;
+  const ifdTax0     = calcTotalTax(taxable,  ifdBrackets);
+  const ifdTax1     = calcTotalTax(taxable1, ifdBrackets);
+
+  // ── Taux marginaux via différence finie ─────────────────────────────────────
+  // Le barème IS est une fonction en escalier : isRate1 ≥ isRate0 (monotone croissant).
+  // La propriété effectiveRate ≤ marginalRate est garantie par la monotonie.
+  const marginalRate = Math.min((totalTax1 - totalTax0) / delta, 0.45);
   const ifdRate      = (ifdTax1 - ifdTax0) / delta;
-  const cantonalRate = (cantonTax1 - cantonTax0) / delta;
-  const marginalRate = Math.min(ifdRate + cantonalRate, 0.45);
+  const cantonalRate = Math.max(0, marginalRate - ifdRate);
 
-  // Totaux
+  // ── Totaux CHF ───────────────────────────────────────────────────────────────
+  const totalTaxChf    = Math.round(totalTax0);
   const ifdTaxChf      = Math.round(ifdTax0);
-  const cantonalTaxChf = Math.round(cantonTax0);
-  const totalTaxChf    = ifdTaxChf + cantonalTaxChf;
-  const effectiveRate  = taxable > 0 ? totalTaxChf / taxable : 0;
+  const cantonalTaxChf = Math.max(0, totalTaxChf - ifdTaxChf);
+
+  // Taux effectif = impôt / revenu brut annuel (IS appliqué sur le brut)
+  const effectiveRate = totalTaxChf / annualGrossIncome;
 
   return {
     marginalRate,
@@ -189,7 +178,6 @@ export function getMarginalRate(
     isOfficial: true,
   };
 }
-
 
 /**
  * Raccourci — retourne juste le taux marginal combiné (nombre).
