@@ -19,6 +19,11 @@ interface FieldCardProps {
 export function FieldCard({ field, checked, onToggle }: FieldCardProps) {
   const [expanded, setExpanded] = useState(false);
 
+  // Max 2 badges inline — le reste dans le détail
+  const visibleBadges = field.badges.slice(0, 2);
+  const hiddenBadges  = field.badges.slice(2);
+  const hasMoreInfo   = hiddenBadges.length > 0 || !!field.ref;
+
   return (
     <div style={{
       background: 'var(--bg-card)',
@@ -50,26 +55,33 @@ export function FieldCard({ field, checked, onToggle }: FieldCardProps) {
 
         {/* Info */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: 4 }}>
-            <span style={{
-              fontSize: 10, fontWeight: 600, letterSpacing: '0.06em',
-              textTransform: 'uppercase', color: 'var(--text-3)',
-            }}>
-              {field.ref}
-            </span>
-            {field.badges.map((b, i) => {
-              const s = BADGE_STYLES[b.variant];
-              return (
-                <span key={i} style={{
-                  fontSize: 10, fontWeight: 700, letterSpacing: '0.05em',
-                  textTransform: 'uppercase', padding: '2px 7px', borderRadius: 6,
-                  background: s.bg, color: s.color,
+          {/* Max 2 badges inline */}
+          {(visibleBadges.length > 0 || hasMoreInfo) && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center', marginBottom: 5 }}>
+              {visibleBadges.map((b, i) => {
+                const s = BADGE_STYLES[b.variant];
+                return (
+                  <span key={i} style={{
+                    fontSize: 10, fontWeight: 700, letterSpacing: '0.05em',
+                    textTransform: 'uppercase', padding: '2px 7px', borderRadius: 6,
+                    background: s.bg, color: s.color,
+                  }}>
+                    {b.text}
+                  </span>
+                );
+              })}
+              {/* Indicateur discret si infos supplémentaires dans le détail */}
+              {hasMoreInfo && !expanded && (
+                <span style={{
+                  fontSize: 10, color: 'var(--text-3)',
+                  padding: '2px 5px', borderRadius: 5,
+                  background: 'var(--bg)', border: '1px solid var(--border)',
                 }}>
-                  {b.text}
+                  ···
                 </span>
-              );
-            })}
-          </div>
+              )}
+            </div>
+          )}
           <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', margin: '0 0 2px' }}>
             {field.name}
           </p>
@@ -100,7 +112,7 @@ export function FieldCard({ field, checked, onToggle }: FieldCardProps) {
             <svg
               width="12" height="12" viewBox="0 0 12 12" fill="none"
               stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"
-              style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 200ms' }}
+              style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 200ms' }}
             >
               <polyline points="2,4 6,8 10,4" />
             </svg>
@@ -116,6 +128,31 @@ export function FieldCard({ field, checked, onToggle }: FieldCardProps) {
           background: 'var(--bg)',
           display: 'grid', gap: 12,
         }}>
+          {/* Référence VStax + badges supplémentaires */}
+          {(field.ref || hiddenBadges.length > 0) && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+              {field.ref && (
+                <span style={{
+                  fontSize: 10, fontWeight: 600, letterSpacing: '0.06em',
+                  textTransform: 'uppercase', color: 'var(--text-3)',
+                }}>
+                  {field.ref}
+                </span>
+              )}
+              {hiddenBadges.map((b, i) => {
+                const s = BADGE_STYLES[b.variant];
+                return (
+                  <span key={i} style={{
+                    fontSize: 10, fontWeight: 700, letterSpacing: '0.05em',
+                    textTransform: 'uppercase', padding: '2px 7px', borderRadius: 6,
+                    background: s.bg, color: s.color,
+                  }}>
+                    {b.text}
+                  </span>
+                );
+              })}
+            </div>
+          )}
           {field.tip && (
             <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}>

@@ -239,11 +239,29 @@ export function ActionsTab() {
         {/* Cards */}
         {filtered.length === 0 ? (
           <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            paddingTop: 64, paddingBottom: 64, borderRadius: 16,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            gap: 12, paddingTop: 56, paddingBottom: 56, borderRadius: 16,
             background: 'var(--bg-card)', border: '1px solid var(--border)',
+            textAlign: 'center',
           }}>
-            <p style={{ fontSize: 14, color: 'var(--text-3)' }}>Aucune action trouvée</p>
+            <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="var(--border)" strokeWidth="1.5" strokeLinecap="round">
+              <circle cx="16" cy="16" r="11" />
+              <line x1="25" y1="25" x2="32" y2="32" strokeWidth="2" />
+              <line x1="12" y1="16" x2="20" y2="16" />
+            </svg>
+            <p style={{ fontSize: 14, color: 'var(--text-3)', margin: 0 }}>Aucune action trouvée</p>
+            {hasFilters && (
+              <button
+                onClick={() => { setSearchQuery(''); setFilterCategory('all'); setFilterPriority('all'); }}
+                style={{
+                  fontSize: 12, fontWeight: 500, color: 'var(--accent)',
+                  background: 'var(--accent-bg)', border: '1px solid var(--accent)',
+                  borderRadius: 10, padding: '7px 14px', cursor: 'pointer',
+                }}
+              >
+                Effacer les filtres
+              </button>
+            )}
           </div>
         ) : (
           <div style={{ display: 'grid', gap: 10 }}>

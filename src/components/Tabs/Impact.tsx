@@ -83,7 +83,11 @@ function CategoryBar({ label, gain, maxGain, color, completed, total }: {
 }
 
 // ── Composant principal ───────────────────────────────────────────────────────
-export function ImpactTab() {
+interface ImpactTabProps {
+  onGoToActions?: () => void;
+}
+
+export function ImpactTab({ onGoToActions }: ImpactTabProps = {}) {
   const profile          = useProfileStore((s) => s.profile)!;
   const completedActions = useProfileStore((s) => s.completedActions);
 
@@ -167,14 +171,41 @@ export function ImpactTab() {
             transition: 'width 600ms ease',
           }} />
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
-          <p style={{ fontSize: 12, color: 'var(--text-3)' }}>
-            Économies réalisées: <strong style={{ color: '#22c55e' }}>{realizedGain.toLocaleString('fr-CH')} CHF</strong>
-          </p>
-          <p style={{ fontSize: 12, color: 'var(--text-3)' }}>
-            Restant: <strong style={{ color: 'var(--text-2)' }}>{(totalGain - realizedGain).toLocaleString('fr-CH')} CHF</strong>
-          </p>
-        </div>
+        {doneCount === 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 14 }}>
+            <p style={{ fontSize: 13, color: 'var(--text-3)', margin: 0 }}>
+              Cochez votre première action pour voir l'impact ici.
+            </p>
+            {onGoToActions && (
+              <button
+                onClick={onGoToActions}
+                style={{
+                  alignSelf: 'flex-start',
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '10px 18px', borderRadius: 12, fontSize: 13, fontWeight: 600,
+                  background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer',
+                  transition: 'background 150ms',
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--accent-dark)'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--accent)'; }}
+              >
+                Commencer par la première action
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="2" y1="6.5" x2="11" y2="6.5" /><polyline points="7.5,3 11,6.5 7.5,10" />
+                </svg>
+              </button>
+            )}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
+            <p style={{ fontSize: 12, color: 'var(--text-3)' }}>
+              Économies réalisées: <strong style={{ color: '#22c55e' }}>{realizedGain.toLocaleString('fr-CH')} CHF</strong>
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--text-3)' }}>
+              Restant: <strong style={{ color: 'var(--text-2)' }}>{(totalGain - realizedGain).toLocaleString('fr-CH')} CHF</strong>
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Avant / Après */}

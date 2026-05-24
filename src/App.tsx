@@ -14,6 +14,16 @@ import { BottomNav } from './components/Layout/BottomNav';
 import { useProfileStore } from './stores/profileStore';
 import './index.css';
 
+const TAB_SHORT_LABELS: Record<string, string> = {
+  actions:  'Actions',
+  timeline: 'Timeline',
+  impact:   'Impact',
+  lexique:  'Lexique',
+  fiche:    'Ma fiche',
+  decla:    'Déclaration',
+  jumeau:   'Jumeau',
+};
+
 const HEADERS: Record<string, { eyebrow: string; title: string; accent: string }> = {
   actions:  { eyebrow: 'Vos leviers fiscaux',        title: 'Gain potentiel',  accent: 'identifié' },
   timeline: { eyebrow: 'Année fiscale 2026',         title: '12 mois',         accent: 'à suivre' },
@@ -227,16 +237,23 @@ function App() {
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', minWidth: 0 }}>
-        <button
-          onClick={() => setSidebarOpen(true)}
-          className="md:hidden flex items-center justify-center"
-          style={{ position: 'fixed', top: 16, left: 16, zIndex: 40, width: 36, height: 36, borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(31,29,27,0.08)', cursor: 'pointer' }}
-          aria-label="Menu"
+        <div
+          className="md:hidden flex items-center gap-2"
+          style={{ position: 'fixed', top: 12, left: 12, zIndex: 40 }}
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--text-2)" strokeWidth="1.6" strokeLinecap="round">
-            <line x1="2" y1="4" x2="14" y2="4" /><line x1="2" y1="8" x2="14" y2="8" /><line x1="2" y1="12" x2="14" y2="12" />
-          </svg>
-        </button>
+          <button
+            onClick={() => setSidebarOpen(true)}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(31,29,27,0.08)', cursor: 'pointer', flexShrink: 0 }}
+            aria-label="Menu"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--text-2)" strokeWidth="1.6" strokeLinecap="round">
+              <line x1="2" y1="4" x2="14" y2="4" /><line x1="2" y1="8" x2="14" y2="8" /><line x1="2" y1="12" x2="14" y2="12" />
+            </svg>
+          </button>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)', letterSpacing: '0.01em' }}>
+            {TAB_SHORT_LABELS[activeTab] ?? activeTab}
+          </span>
+        </div>
 
         <div style={{ flex: 1, overflowY: 'auto' }} className="pb-20 md:pb-0">
           <div key={activeTab} className="max-w-3xl mx-auto px-5 lg:px-8 pt-6 md:pt-0 animate-slide-up">
@@ -244,7 +261,7 @@ function App() {
             <div style={{ paddingBottom: 40 }}>
               {activeTab === 'actions'  && <ActionsTab />}
               {activeTab === 'timeline' && <TimelineTab />}
-              {activeTab === 'impact'   && <ImpactTab />}
+              {activeTab === 'impact'   && <ImpactTab onGoToActions={() => setActiveTab('actions')} />}
               {activeTab === 'lexique'  && <LexiqueTab />}
               {activeTab === 'fiche'    && <FicheTab />}
               {activeTab === 'jumeau'   && <JumeauTab />}
