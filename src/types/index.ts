@@ -17,6 +17,8 @@ export interface UserProfile {
   conjoint_permit?: string;
   rent?: number;
   has3a: "yes" | "no";
+  /** Fortune nette estimée en CHF (optionnel, défaut 0). Utilisée pour le calcul de l'impôt sur la fortune. */
+  fortune?: number;
 }
 
 // Action Types

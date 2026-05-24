@@ -13,6 +13,7 @@ const defaultProfile: UserProfile = {
   conjoint_permit: '',
   rent: 0,
   has3a: 'no',
+  fortune: 0,
 };
 
 export const useProfileStore = create<ProfileStore>()(

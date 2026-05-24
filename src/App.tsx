@@ -39,6 +39,7 @@ function Onboarding({ onComplete }: { onComplete: (data: any) => void }) {
   const [canton, setCanton]             = useState<Canton>('VS');
   const [sit, setSit]                   = useState('single');
   const [income, setIncome]             = useState('5000');
+  const [fortune, setFortune]           = useState('');
   const [permit, setPermit]             = useState('B');
   const [housing, setHousing]           = useState('renter');
   const [has3a, setHas3a]               = useState<'yes' | 'no'>('no');
@@ -57,6 +58,7 @@ function Onboarding({ onComplete }: { onComplete: (data: any) => void }) {
       activity: 'employee',
       has3a,
       conjoint_permit: sit === 'couple' ? conjointPermit : '',
+      fortune: fortune ? cleanNumber(fortune) : 0,
     });
   };
 
@@ -193,6 +195,25 @@ function Onboarding({ onComplete }: { onComplete: (data: any) => void }) {
               onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(201,100,66,0.12)'; }}
               onBlur={(e)  => { e.currentTarget.style.borderColor = 'var(--border)';  e.currentTarget.style.boxShadow = 'none'; }}
             />
+          </div>
+
+          {/* Fortune */}
+          <div>
+            <label style={labelStyle}>
+              Fortune nette estimée (CHF) —{' '}
+              <span style={{ textTransform: 'none', fontWeight: 400, opacity: 0.7 }}>optionnel</span>
+            </label>
+            <input
+              type="number" value={fortune} onChange={(e) => setFortune(e.target.value)}
+              min="0" max="50000000" step="10000"
+              placeholder="ex : 150 000 (comptes, titres, crypto…)"
+              style={{ width: '100%', padding: '11px 14px', borderRadius: 12, fontSize: 15, fontFamily: 'var(--font-mono)', background: 'var(--bg-card)', border: '1.5px solid var(--border)', color: 'var(--text)', outline: 'none' }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(201,100,66,0.12)'; }}
+              onBlur={(e)  => { e.currentTarget.style.borderColor = 'var(--border)';  e.currentTarget.style.boxShadow = 'none'; }}
+            />
+            <p style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6, lineHeight: 1.5, margin: '6px 0 0' }}>
+              Épargne + placements + immobilier − dettes. Utilisé pour l'impôt sur la fortune.
+            </p>
           </div>
 
           <button

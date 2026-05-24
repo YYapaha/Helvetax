@@ -29,6 +29,32 @@ export interface CantonConfig {
   taxURL: string;
   // Coefficient communal range (indicative)
   coefficientNote: string;
+
+  // ── Impôt sur la fortune ──────────────────────────────────────────────────
+  /**
+   * Abattement personnel sur la fortune nette (CHF) — personne seule.
+   * La fortune imposable = max(0, fortune nette − exonérationFortune).
+   * Source : lois fiscales cantonales 2026.
+   */
+  fortuneExoneration: number;
+  /**
+   * Abattement personnel pour couple marié / partenariat enregistré.
+   * Généralement le double du montant célibataire.
+   */
+  fortuneExonerationCouple: number;
+  /**
+   * Coefficient communal appliqué à l'impôt cantonal de base sur la fortune.
+   * Pour GE : 1.00 (taux uniforme, communal déjà inclus dans le barème).
+   * Pour VS : 1.30 (Sion, même coefficient que pour le revenu).
+   * Pour VD : 1.795 (Lausanne = cantonal × 1.795, car commune = 79.5% du cantonal).
+   * Pour NE : 1.80 (Neuchâtel = cantonal × 1.80, car commune = 80% du cantonal).
+   */
+  fortuneCommunalCoeff: number;
+  /**
+   * Plafond de l'impôt cantonal + communal sur la fortune, exprimé en ‰ de
+   * la fortune nette. 0 = pas de plafond. VD = 10 (soit 1% de la fortune).
+   */
+  fortuneCapPermille: number;
 }
 
 export const CANTON_CONFIG: Record<Canton, CantonConfig> = {
@@ -50,6 +76,10 @@ export const CANTON_CONFIG: Record<Canton, CantonConfig> = {
     taxAuthority: 'Service cantonal des contributions (SCC)',
     taxURL: 'https://www.vs.ch/web/scc',
     coefficientNote: 'Le coefficient varie par commune : Sion 1.30, Sierre 1.35, Monthey 1.45, Martigny 1.40. Vérifier sur vsfisco.ch.',
+    fortuneExoneration: 25_000,         // art. 58 LF-VS 2026 — célibataire
+    fortuneExonerationCouple: 50_000,   // art. 58 LF-VS 2026 — couple
+    fortuneCommunalCoeff: 1.30,         // chef-lieu : Sion
+    fortuneCapPermille: 0,              // pas de plafond en Valais
   },
   VD: {
     name: 'Vaud',
@@ -69,6 +99,10 @@ export const CANTON_CONFIG: Record<Canton, CantonConfig> = {
     taxAuthority: 'Direction générale de la fiscalité (DGF)',
     taxURL: 'https://www.vd.ch/themes/etat-droit-finances/impots',
     coefficientNote: 'Coefficient fiscal vaudois : Lausanne 0.795, Nyon 0.655, Renens 0.795. Vérifier sur le simulateur fiscal VD.',
+    fortuneExoneration: 59_400,           // art. 50 LICD-VD 2026 (indexé) — célibataire
+    fortuneExonerationCouple: 118_800,    // art. 50 LICD-VD 2026 — couple
+    fortuneCommunalCoeff: 1.795,          // Lausanne : impôt communal = 79.5% du cantonal → total = 1.795 × cantonal
+    fortuneCapPermille: 10,               // art. 52 LICD-VD : plafond 10‰ (= 1%) de la fortune nette
   },
   GE: {
     name: 'Genève',
@@ -88,6 +122,10 @@ export const CANTON_CONFIG: Record<Canton, CantonConfig> = {
     taxAuthority: 'Administration fiscale cantonale (AFC)',
     taxURL: 'https://www.ge.ch/impots',
     coefficientNote: 'Genève n\'a pas de coefficient communal — le taux cantonal est uniforme. Avantage : pas de variation selon la commune.',
+    fortuneExoneration: 25_000,           // LIPP-GE art. 56 — célibataire
+    fortuneExonerationCouple: 50_000,     // LIPP-GE art. 56 — couple
+    fortuneCommunalCoeff: 1.00,           // taux uniforme GE, communal déjà inclus dans le barème
+    fortuneCapPermille: 0,                // pas de plafond à GE
   },
   NE: {
     name: 'Neuchâtel',
@@ -107,6 +145,10 @@ export const CANTON_CONFIG: Record<Canton, CantonConfig> = {
     taxAuthority: 'Service cantonal des contributions (SCCOI)',
     taxURL: 'https://www.ne.ch/autorites/DFS/SCCOI',
     coefficientNote: 'Coefficient communal neuchâtelois : La Chaux-de-Fonds 86%, Neuchâtel 80%, Le Locle 91%. Vérifier sur le simulateur cantonal.',
+    fortuneExoneration: 50_000,           // LI-NE — seuil d'imposition célibataire
+    fortuneExonerationCouple: 100_000,    // LI-NE — couple
+    fortuneCommunalCoeff: 1.80,           // Neuchâtel-Ville : communal = 80% du cantonal → total = 1.80 × cantonal
+    fortuneCapPermille: 0,                // pas de plafond à NE
   },
 };
 

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useProfileStore } from '../../stores/profileStore';
 import { generateActions } from '../../utils/generateActions';
 import { getMarginalRate } from '../../utils/taxBrackets';
+import { calculateWealthTax } from '../../utils/wealthTax';
 import { cleanNumber } from '../../utils/numberUtils';
 
 // ── Couleurs par catégorie ────────────────────────────────────────────────────
@@ -97,6 +98,13 @@ export function ImpactTab({ onGoToActions }: ImpactTabProps = {}) {
   const taxInfo = useMemo(
     () => getMarginalRate(annualIncome, profile.canton, profile.situation),
     [annualIncome, profile.canton, profile.situation],
+  );
+
+  // Impôt sur la fortune
+  const fortune    = cleanNumber(profile.fortune ?? 0);
+  const wealthTax  = useMemo(
+    () => fortune > 0 ? calculateWealthTax(fortune, profile.canton, profile.situation) : null,
+    [fortune, profile.canton, profile.situation],
   );
 
   // Regrouper par catégorie
@@ -230,6 +238,76 @@ export function ImpactTab({ onGoToActions }: ImpactTabProps = {}) {
           </p>
         )}
       </div>
+
+      {/* ── Impôt sur la fortune ─────────────────────────────────────── */}
+      {wealthTax ? (
+        <div style={{ padding: '16px 18px', borderRadius: 16, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Impôt sur la fortune</p>
+            {wealthTax.isCapped && (
+              <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 20, background: 'rgba(234,179,8,0.12)', color: '#ca8a04', fontWeight: 600, border: '1px solid rgba(234,179,8,0.25)' }}>
+                Plafond 10‰ appliqué
+              </span>
+            )}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+            {[
+              {
+                label: 'Fortune nette',
+                value: `${fortune.toLocaleString('fr-CH')} CHF`,
+                sub: `Imposable : ${wealthTax.taxableWealth.toLocaleString('fr-CH')} CHF`,
+              },
+              {
+                label: 'Abattement',
+                value: `−${wealthTax.exoneration.toLocaleString('fr-CH')} CHF`,
+                sub: `Exonération ${profile.situation === 'couple' ? 'couple' : 'célibataire'}`,
+              },
+              {
+                label: 'Impôt total estimé',
+                value: `${wealthTax.taxAmountTotal.toLocaleString('fr-CH')} CHF/an`,
+                sub: `Cantonal de base : ${wealthTax.taxAmountCantonal.toLocaleString('fr-CH')} CHF`,
+                highlight: true,
+              },
+              {
+                label: 'Taux effectif',
+                value: `${wealthTax.effectiveRatePermille.toFixed(2)} ‰`,
+                sub: `Marginal : ${wealthTax.marginalRatePermille.toFixed(2)} ‰`,
+              },
+            ].map(({ label, value, sub, highlight }) => (
+              <div key={label} style={{
+                padding: '12px 14px', borderRadius: 12,
+                background: highlight ? 'rgba(201,100,66,0.06)' : 'var(--bg)',
+                border: `1px solid ${highlight ? 'rgba(201,100,66,0.2)' : 'var(--border)'}`,
+              }}>
+                <p style={{ fontSize: 10, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-3)', marginBottom: 4 }}>{label}</p>
+                <p style={{ fontSize: 14, fontWeight: 700, color: highlight ? 'var(--accent)' : 'var(--text)', fontFamily: 'var(--font-mono)', lineHeight: 1.2 }}>{value}</p>
+                <p style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 3 }}>{sub}</p>
+              </div>
+            ))}
+          </div>
+
+          <p style={{ fontSize: 11, color: 'var(--text-3)', lineHeight: 1.5 }}>
+            Barème officiel {profile.canton} 2026 · coefficient communal chef-lieu inclus.
+            {wealthTax.taxAmountTotal === 0
+              ? ' Fortune sous le seuil d\'exonération — aucun impôt dû.'
+              : ' Se déclare avec les revenus dans la déclaration annuelle.'}
+          </p>
+        </div>
+      ) : (
+        <div style={{
+          padding: '14px 18px', borderRadius: 16,
+          background: 'var(--bg-card)', border: '1px dashed var(--border)',
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--text-3)" strokeWidth="1.4" strokeLinecap="round">
+            <circle cx="8" cy="8" r="7" /><line x1="8" y1="5" x2="8" y2="8" /><line x1="8" y1="11" x2="8" y2="11" strokeWidth="2" />
+          </svg>
+          <p style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.5 }}>
+            <strong style={{ color: 'var(--text-2)' }}>Impôt sur la fortune</strong> — renseigne ta fortune nette dans le profil (onboarding) pour voir ce calcul.
+          </p>
+        </div>
+      )}
 
       {/* Graphique par catégorie */}
       <div style={{ padding: '16px 18px', borderRadius: 16, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>

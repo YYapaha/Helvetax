@@ -1,5 +1,6 @@
 import type { UserProfile } from '../types';
 import { getCantonConfig } from './cantonConfig';
+import { calculateWealthTax } from './wealthTax';
 
 export type EventType = 'critical' | 'warning' | 'positive' | 'info';
 
@@ -37,6 +38,14 @@ export function generateTimeline(profile: UserProfile): TimelineMonth[] {
   const seuil        = cc.seuilDeclarationIS;
   const fmtSeuil     = seuil.toLocaleString('fr-CH');
   const isAboveSeuil = isPermitB && annualIncome >= seuil;
+
+  // Impôt sur la fortune
+  const fortune      = Number(profile.fortune) || 0;
+  const hasFortune   = fortune > 0;
+  const wealthTax    = hasFortune ? calculateWealthTax(fortune, profile.canton, profile.situation) : null;
+  const wtAmount     = wealthTax?.taxAmountTotal ?? 0;
+  const wtFmt        = wtAmount > 0 ? `~${Math.round(wtAmount).toLocaleString('fr-CH')} CHF/an` : 'sous le seuil d\'exonération';
+  const fortuneFmt   = fortune.toLocaleString('fr-CH');
 
   // All events keyed by month (1=Jan ... 12=Dec)
   const raw: Array<{ month: number; event: TimelineEvent; show?: boolean }> = [
@@ -111,6 +120,23 @@ export function generateTimeline(profile: UserProfile): TimelineMonth[] {
     { month: 11, event: { id: 'nov-2', title: 'DEADLINE : Changement de franchise avant 30 nov', detail: 'Communiquer à ta caisse actuelle — deadline absolue', type: 'critical', actionId: '17' , day: 30} },
     { month: 11, event: { id: 'nov-3', title: 'Payer acomptes AVS Q4', detail: 'Paiement avant fin décembre', type: 'warning', actionId: '30' }, show: isSelf },
     { month: 11, event: { id: 'nov-4', title: 'Vérifier les rachats LPP planifiés', detail: 'Dernier moment pour planifier le versement de décembre', type: 'info', actionId: '39' }, show: annualIncome > 70000 },
+
+    /* ── Fortune : déclaration conjointe (même deadline que la déclaration revenus) ── */
+    { month: cc.declarationMonth, event: {
+      id: 'fortune-decl',
+      title: `Déclarer l'impôt sur la fortune — ${cc.declarationLabel}`,
+      detail: `Fortune nette ${fortuneFmt} CHF → impôt estimé ${wtFmt}. La fortune se déclare en même temps que les revenus (même formulaire).`,
+      type: 'warning',
+      day: cc.declarationDay,
+    }, show: hasFortune && (!isPermitB || isAboveSeuil) },
+
+    /* ── Fortune : acompte (si impôt > 300 CHF) ── */
+    { month: 5, event: {
+      id: 'fortune-acompte',
+      title: `Vérifier l'acompte impôt sur la fortune`,
+      detail: `Impôt fortune estimé à ${wtFmt}. Si l'acompte envoyé par le canton ne l'intègre pas, contacter le service des contributions.`,
+      type: 'info',
+    }, show: hasFortune && wtAmount > 300 },
 
     /* ── Décembre ────────────────────────────────────────────────────── */
     { month: 12, event: { id: 'dec-1', title: 'DEADLINE : Maxer le 3a avant 31 décembre', detail: `Verser le solde jusqu'aux 7'258 CHF — deadline absolue`, type: 'critical', actionId: '1' , day: 31} },
