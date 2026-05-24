@@ -8,6 +8,7 @@ import { FicheTab } from './components/Tabs/Fiche';
 import { DeclaTab } from './components/Tabs/Decla';
 import { ImpactTab } from './components/Tabs/Impact';
 import { LexiqueTab } from './components/Tabs/Lexique';
+import { JumeauTab } from './components/Tabs/Jumeau';
 import { PageHeader } from './components/Layout/PageHeader';
 import { BottomNav } from './components/Layout/BottomNav';
 import { useProfileStore } from './stores/profileStore';
@@ -246,7 +247,7 @@ function App() {
               {activeTab === 'impact'   && <ImpactTab />}
               {activeTab === 'lexique'  && <LexiqueTab />}
               {activeTab === 'fiche'    && <FicheTab />}
-              {activeTab === 'jumeau'   && <ComingSoon label="Jumeau fiscal" />}
+              {activeTab === 'jumeau'   && <JumeauTab />}
               {activeTab === 'decla'    && <DeclaTab />}
               <LegalDisclaimer compact />
             </div>
