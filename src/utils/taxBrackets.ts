@@ -14,6 +14,7 @@
 
 import type { Canton } from './cantonConfig';
 import { getIsRate, getBaremeCode } from './afcTariffs';
+import type { CoupleIncomeType } from './afcTariffs';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -115,6 +116,7 @@ function calcTotalTax(income: number, brackets: Bracket[]): number {
  * @param situation          'single' | 'couple'
  * @param communalCoeff      Ignoré (communal inclus dans AFC) — conservé pour compatibilité API
  * @param children           Nombre d'enfants à charge (0–9, défaut 0)
+ * @param coupleIncomeType   'single' (barème C, défaut) | 'dual' (barème B, 2 revenus)
  */
 export function getMarginalRate(
   annualGrossIncome: number,
@@ -122,6 +124,7 @@ export function getMarginalRate(
   situation:         string = 'single',
   communalCoeff?:    number,  // eslint-disable-line @typescript-eslint/no-unused-vars
   children:          number = 0,
+  coupleIncomeType?: CoupleIncomeType,
 ): TaxBreakdown {
   if (annualGrossIncome <= 0) {
     return {
@@ -133,7 +136,7 @@ export function getMarginalRate(
 
   const delta    = 1_000;  // CHF/an — palier différence finie
   const sit      = situation === 'couple' ? 'couple' : 'single' as const;
-  const bareme   = getBaremeCode(sit, children, canton);
+  const bareme   = getBaremeCode(sit, children, canton, coupleIncomeType);
 
   // ── Total IS via AFC (barème officiel) ──────────────────────────────────────
   const monthly0  = annualGrossIncome / 12;

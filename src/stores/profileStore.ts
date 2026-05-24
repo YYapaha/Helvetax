@@ -14,6 +14,7 @@ const defaultProfile: UserProfile = {
   rent: 0,
   has3a: 'no',
   fortune: 0,
+  coupleIncomeType: 'single',
 };
 
 export const useProfileStore = create<ProfileStore>()(

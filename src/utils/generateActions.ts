@@ -10,7 +10,7 @@ export function generateActions(profile: UserProfile): Action[] {
   const canton = profile.canton;
   const children = cleanNumber(profile.children);
 
-  const { marginalRate } = getMarginalRate(annualIncome, canton, profile.situation ?? 'single');
+  const { marginalRate } = getMarginalRate(annualIncome, canton, profile.situation ?? 'single', undefined, children, profile.coupleIncomeType);
 
   // ACTION 1: 3a Pilier
   const pillar3aMax = 7258;

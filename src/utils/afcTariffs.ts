@@ -32,6 +32,17 @@ type BaremeTarif = IsPoint[];
 type CantonTarifs = Record<string, BaremeTarif>;
 interface FiscalJson { cantons: Record<string, CantonTarifs> }
 
+/**
+ * Type de revenu pour un couple marié.
+ *
+ * - 'single' : un seul revenu (barème C — modèle traditionnel)
+ * - 'dual'   : deux revenus (barème B — chaque conjoint taxé séparément,
+ *              effet de splitting : impôt généralement inférieur)
+ *
+ * Défaut : 'single' (rétrocompatibilité).
+ */
+export type CoupleIncomeType = 'single' | 'dual';
+
 // Chargement du JSON (import statique — Vite inclut dans le bundle)
 // Utilisation de 'unknown' pour éviter l'inférence TypeScript sur 4.7 MB
 import _fiscal from '../data/fiscalData2026.json';
@@ -55,20 +66,32 @@ export const MAX_CHILDREN_IS: Record<Canton, number> = {
 /**
  * Retourne le code barème AFC pour une situation et un nombre d'enfants donnés.
  *
- * - 'single' → A (personne seule)
- * - 'couple' → C (couple, 1 revenu — modèle conservateur pour Helvetax)
+ * - 'single'                        → préfixe A (personne seule)
+ * - 'couple' + coupleIncomeType 'single' (défaut) → préfixe C (1 revenu)
+ * - 'couple' + coupleIncomeType 'dual'             → préfixe B (2 revenus, splitting)
  *
  * Le suffixe numérique = enfants, plafonné au max du canton.
  * Le suffixe N = barème normal (revenus courants).
+ *
+ * @param situation         'single' | 'couple'
+ * @param children          Nombre d'enfants à charge (≥ 0)
+ * @param canton            Code canton : 'VS' | 'VD' | 'GE' | 'NE'
+ * @param coupleIncomeType  'single' (1 revenu, défaut) | 'dual' (2 revenus)
  */
 export function getBaremeCode(
-  situation: 'single' | 'couple',
-  children:  number,
-  canton:    Canton,
+  situation:         'single' | 'couple',
+  children:          number,
+  canton:            Canton,
+  coupleIncomeType?: CoupleIncomeType,
 ): string {
-  const prefix  = situation === 'couple' ? 'C' : 'A';
-  const maxN    = MAX_CHILDREN_IS[canton] ?? 9;
-  const n       = Math.min(Math.max(0, Math.floor(children)), maxN);
+  let prefix: string;
+  if (situation === 'couple') {
+    prefix = coupleIncomeType === 'dual' ? 'B' : 'C';
+  } else {
+    prefix = 'A';
+  }
+  const maxN = MAX_CHILDREN_IS[canton] ?? 9;
+  const n    = Math.min(Math.max(0, Math.floor(children)), maxN);
   return `${prefix}${n}N`;
 }
 
@@ -119,14 +142,17 @@ export function getIsRate(
 /**
  * Calcule l'impôt annuel IS (CHF) et le taux effectif pour un revenu annuel brut.
  * Utile pour les calculs directs sans passer par getMarginalRate().
+ *
+ * @param coupleIncomeType  'single' (1 revenu, défaut) | 'dual' (2 revenus — barème B)
  */
 export function getIsAnnualTax(
   annualGrossIncome: number,
   canton:            Canton,
   situation:         'single' | 'couple',
   children           = 0,
+  coupleIncomeType?: CoupleIncomeType,
 ): { rate: number; taxChf: number; bareme: string } {
-  const bareme  = getBaremeCode(situation, children, canton);
+  const bareme  = getBaremeCode(situation, children, canton, coupleIncomeType);
   const monthly = annualGrossIncome / 12;
   const rate    = getIsRate(monthly, canton, bareme);
   return { rate, taxChf: Math.round(annualGrossIncome * rate), bareme };

@@ -12,6 +12,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { getMarginalRate, getMarginalRateSimple } from './taxBrackets';
+import { getBaremeCode } from './afcTariffs';
 
 describe('getMarginalRate — structure', () => {
   it('retourne tous les champs attendus', () => {
@@ -153,5 +154,81 @@ describe('getMarginalRateSimple — compatibilité', () => {
     const simple = getMarginalRateSimple(100_000, 'VS', 'single');
     const full   = getMarginalRate(100_000, 'VS', 'single').marginalRate;
     expect(simple).toBe(full);
+  });
+});
+
+// ── Barème B (couple, 2 revenus) ─────────────────────────────────────────────
+
+describe('getBaremeCode — codes barème couple', () => {
+  it('single → préfixe A', () => {
+    expect(getBaremeCode('single', 0, 'VS')).toBe('A0N');
+  });
+
+  it('couple, 1 revenu (défaut) → préfixe C', () => {
+    expect(getBaremeCode('couple', 0, 'VS')).toBe('C0N');
+    expect(getBaremeCode('couple', 0, 'VS', 'single')).toBe('C0N');
+  });
+
+  it('couple, 2 revenus → préfixe B', () => {
+    expect(getBaremeCode('couple', 0, 'VS', 'dual')).toBe('B0N');
+  });
+
+  it('couple, 2 revenus + enfants → suffixe correct', () => {
+    expect(getBaremeCode('couple', 2, 'VS', 'dual')).toBe('B2N');
+    expect(getBaremeCode('couple', 1, 'NE', 'dual')).toBe('B1N');
+  });
+
+  it('GE : plafond à 5 enfants pour barème B', () => {
+    expect(getBaremeCode('couple', 9, 'GE', 'dual')).toBe('B5N');
+  });
+
+  it('couple, 2 revenus + 0 enfants : tous cantons', () => {
+    for (const canton of ['VS', 'VD', 'GE', 'NE'] as const) {
+      expect(getBaremeCode('couple', 0, canton, 'dual')).toBe('B0N');
+    }
+  });
+});
+
+describe('getMarginalRate — barème B vs barème C (splitting)', () => {
+  it('barème B (dual) impôt total < barème C (single) à revenu égal — VS 80k', () => {
+    // Le barème B est le barème de splitting : deux conjoints taxés séparément.
+    // L'impôt IS est inférieur car chaque conjoint est taxé sur la moitié du revenu.
+    const rC = getMarginalRate(80_000, 'VS', 'couple', undefined, 0, 'single');
+    const rB = getMarginalRate(80_000, 'VS', 'couple', undefined, 0, 'dual');
+    expect(rB.totalTaxChf).toBeLessThan(rC.totalTaxChf);
+  });
+
+  it('barème B (dual) impôt total < barème C (single) — NE 100k', () => {
+    const rC = getMarginalRate(100_000, 'NE', 'couple', undefined, 0, 'single');
+    const rB = getMarginalRate(100_000, 'NE', 'couple', undefined, 0, 'dual');
+    expect(rB.totalTaxChf).toBeLessThan(rC.totalTaxChf);
+  });
+
+  it('barème B (dual) impôt total < barème C (single) — GE 150k', () => {
+    const rC = getMarginalRate(150_000, 'GE', 'couple', undefined, 0, 'single');
+    const rB = getMarginalRate(150_000, 'GE', 'couple', undefined, 0, 'dual');
+    expect(rB.totalTaxChf).toBeLessThan(rC.totalTaxChf);
+  });
+
+  it('barème B (dual) < barème C (single) < barème A (single) à 100k VS', () => {
+    // B < C < A : splitting donne l'impôt le plus faible, célibataire le plus élevé
+    // (C peut être > A à certains revenus selon la structure AFC — on teste B < C seulement)
+    const rA = getMarginalRate(100_000, 'VS', 'single');
+    const rC = getMarginalRate(100_000, 'VS', 'couple', undefined, 0, 'single');
+    const rB = getMarginalRate(100_000, 'VS', 'couple', undefined, 0, 'dual');
+    expect(rB.totalTaxChf).toBeLessThan(rC.totalTaxChf);
+    expect(rC.totalTaxChf).not.toBe(rA.totalTaxChf); // C ≠ A (barèmes différents)
+  });
+
+  it('barème B couple avec enfants : code correct et calcul sans erreur', () => {
+    const r = getMarginalRate(80_000, 'VS', 'couple', undefined, 2, 'dual');
+    expect(r.totalTaxChf).toBeGreaterThan(0);
+    expect(r.marginalRate).toBeGreaterThan(0);
+  });
+
+  it('coupleIncomeType undefined → comportement identique à "single" (rétrocompatibilité)', () => {
+    const rDefault  = getMarginalRate(80_000, 'VS', 'couple');
+    const rExplicit = getMarginalRate(80_000, 'VS', 'couple', undefined, 0, 'single');
+    expect(rDefault.totalTaxChf).toBe(rExplicit.totalTaxChf);
   });
 });

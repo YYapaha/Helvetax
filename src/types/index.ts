@@ -19,6 +19,13 @@ export interface UserProfile {
   has3a: "yes" | "no";
   /** Fortune nette estimée en CHF (optionnel, défaut 0). Utilisée pour le calcul de l'impôt sur la fortune. */
   fortune?: number;
+  /**
+   * Type de revenu pour un couple marié.
+   * 'single' = un seul revenu (barème C, défaut).
+   * 'dual'   = deux revenus (barème B, splitting — impôt généralement inférieur).
+   * Ignoré si situation !== 'couple'.
+   */
+  coupleIncomeType?: "single" | "dual";
 }
 
 // Action Types

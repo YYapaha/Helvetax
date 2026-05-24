@@ -45,6 +45,7 @@ function Onboarding({ onComplete }: { onComplete: (data: any) => void }) {
   const [has3a, setHas3a]               = useState<'yes' | 'no'>('no');
   const [children, setChildren]         = useState(0);
   const [conjointPermit, setConjointPermit] = useState<'B' | 'C' | 'CH'>('B');
+  const [coupleIncomeType, setCoupleIncomeType] = useState<'single' | 'dual'>('single');
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,6 +60,7 @@ function Onboarding({ onComplete }: { onComplete: (data: any) => void }) {
       has3a,
       conjoint_permit: sit === 'couple' ? conjointPermit : '',
       fortune: fortune ? cleanNumber(fortune) : 0,
+      coupleIncomeType: sit === 'couple' ? coupleIncomeType : 'single',
     });
   };
 
@@ -143,6 +145,30 @@ function Onboarding({ onComplete }: { onComplete: (data: any) => void }) {
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Revenus du couple — conditionnel */}
+          {sit === 'couple' && (
+            <div>
+              <label style={labelStyle}>Revenus du ménage</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {([
+                  { v: 'single', l: '1 revenu', sub: 'barème C' },
+                  { v: 'dual',   l: '2 revenus', sub: 'barème B' },
+                ] as const).map(({ v, l, sub }) => (
+                  <button key={v} type="button" onClick={() => setCoupleIncomeType(v)}
+                    style={{ padding: '10px 8px', borderRadius: 12, fontSize: 13, cursor: 'pointer', transition: 'all 150ms', ...toggleStyle(coupleIncomeType === v) }}>
+                    {l}
+                    <span style={{ display: 'block', fontSize: 10, opacity: 0.65, marginTop: 2, fontWeight: 400 }}>{sub}</span>
+                  </button>
+                ))}
+              </div>
+              {coupleIncomeType === 'dual' && (
+                <p style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6, lineHeight: 1.5, margin: '6px 0 0' }}>
+                  Le barème B (splitting) s'applique lorsque les deux conjoints ont un revenu propre soumis à l'impôt à la source.
+                </p>
+              )}
             </div>
           )}
 

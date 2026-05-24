@@ -96,8 +96,8 @@ export function ImpactTab({ onGoToActions }: ImpactTabProps = {}) {
 
   const annualIncome = cleanNumber(profile.income) * 12;
   const taxInfo = useMemo(
-    () => getMarginalRate(annualIncome, profile.canton, profile.situation),
-    [annualIncome, profile.canton, profile.situation],
+    () => getMarginalRate(annualIncome, profile.canton, profile.situation, undefined, cleanNumber(profile.children), profile.coupleIncomeType),
+    [annualIncome, profile.canton, profile.situation, profile.children, profile.coupleIncomeType],
   );
 
   // Impôt sur la fortune
@@ -131,8 +131,8 @@ export function ImpactTab({ onGoToActions }: ImpactTabProps = {}) {
   const doneCount      = completedActions.filter((id) => actions.some((a) => a.id === id)).length;
   // Recalcul exact sur revenu diminué des déductions (plus rigoureux que approximation linéaire)
   const taxInfoOptimized = useMemo(
-    () => getMarginalRate(Math.max(0, annualIncome - totalGain), profile.canton, profile.situation),
-    [annualIncome, totalGain, profile.canton, profile.situation],
+    () => getMarginalRate(Math.max(0, annualIncome - totalGain), profile.canton, profile.situation, undefined, cleanNumber(profile.children), profile.coupleIncomeType),
+    [annualIncome, totalGain, profile.canton, profile.situation, profile.children, profile.coupleIncomeType],
   );
   const optimizedTax   = taxInfoOptimized.totalTaxChf;
   const taxSaved       = Math.max(0, taxInfo.totalTaxChf - optimizedTax);
