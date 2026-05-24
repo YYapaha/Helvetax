@@ -80,6 +80,11 @@ export function generateTimeline(profile: UserProfile): TimelineMonth[] {
     /* ── Juillet ─────────────────────────────────────────────────────── */
     { month: 7, event: { id: 'jul-1', title: 'Planifier formation continue H2', detail: 'Inscrire les cours avant la fin d\'année pour la déduction 2026', type: 'info', actionId: '7' } },
 
+    /* ── Août ───────────────────────────────────────────────────────── */
+    { month: 8, event: { id: 'aou-1', title: 'Bilan fiscal mi-S2 — faire le point', detail: 'Revoir les actions non réalisées et planifier la rentrée fiscale d\'automne', type: 'positive' } },
+    { month: 8, event: { id: 'aou-2', title: 'Vérifier l\'avancement des versements 3a', detail: `Objectif : ${Math.round(7258 * 8 / 12).toLocaleString('fr-CH')} CHF versés à fin août`, type: 'info', actionId: '1' }, show: has3a },
+    { month: 8, event: { id: 'aou-3', title: 'Planifier les acomptes AVS Q3', detail: 'Paiement avant fin septembre — anticiper dès août', type: 'warning', actionId: '30' }, show: isSelf },
+
     /* ── Septembre ───────────────────────────────────────────────────── */
     { month: 9, event: { id: 'sep-1', title: 'Primes LAMal 2027 publiées — comparer', detail: 'Utiliser priminfo.admin.ch pour comparer caisses et modèles', type: 'warning', actionId: '4' } },
     { month: 9, event: { id: 'sep-2', title: 'Calculer franchise optimale 2027', detail: 'Comparer tes dépenses de santé réelles vs économie en prime', type: 'info', actionId: '17' } },
