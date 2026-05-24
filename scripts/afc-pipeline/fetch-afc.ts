@@ -179,31 +179,58 @@ async function main() {
     }
   }
 
-  // Construction du JSON de sortie
+  // Construction du JSON de sortie — format compact (résumé taux seulement)
+  // Pour chaque (canton, codeBareme): tableau trié de { revenu, taux }, taux > 0 uniquement
+  const compactCantons: Record<string, Record<string, { revenu: number; taux: number }[]>> = {};
+
+  for (const [canton, data] of Object.entries(cantonData)) {
+    const byBareme: Record<string, { revenu: number; taux: number }[]> = {};
+
+    for (const rows of Object.values(data.tarifs)) {
+      for (const row of rows) {
+        if (row.taux <= 0) continue; // ignorer les lignes sans impôt
+        if (!byBareme[row.codeBareme]) byBareme[row.codeBareme] = [];
+        byBareme[row.codeBareme].push({ revenu: row.revenu, taux: row.taux });
+      }
+    }
+
+    // Dédupliquer sur revenu + trier + ne garder que les points de changement de taux
+    // (la table est une fonction en escalier — les runs identiques sont redondants)
+    for (const code of Object.keys(byBareme)) {
+      const deduped = new Map<number, number>();
+      for (const pt of byBareme[code]) deduped.set(pt.revenu, pt.taux);
+      const sorted = Array.from(deduped.entries())
+        .sort(([a], [b]) => a - b);
+
+      // Ne garder que les breakpoints où le taux change
+      const breakpoints: { revenu: number; taux: number }[] = [];
+      let prevTaux = -1;
+      for (const [revenu, taux] of sorted) {
+        if (taux !== prevTaux) {
+          breakpoints.push({ revenu, taux });
+          prevTaux = taux;
+        }
+      }
+      byBareme[code] = breakpoints;
+    }
+
+    compactCantons[canton] = byBareme;
+
+    const totalPoints = Object.values(byBareme).reduce((s, a) => s + a.length, 0);
+    const baremeCodes = Object.keys(byBareme).sort();
+    console.log(`  [compact] ${canton}: ${baremeCodes.length} barèmes, ${totalPoints} points (taux>0)`);
+  }
+
   const output = {
     year:       YEAR,
     lastUpdate: new Date().toISOString().split('T')[0],
     source:     'AFC — estv2.admin.ch',
     federal:    FEDERAL,
-    cantons:    Object.fromEntries(
-      Object.entries(cantonData).map(([canton, data]) => [
-        canton,
-        {
-          filesParsed: data.fileCount,
-          tarifsFiles: Object.keys(data.tarifs),
-          // Résumé par fichier: nb de lignes parsées
-          rowCounts: Object.fromEntries(
-            Object.entries(data.tarifs).map(([file, rows]) => [file, rows.length])
-          ),
-          // Données brutes complètes (pour intégration future dans l'UI)
-          tarifs: data.tarifs,
-        }
-      ])
-    ),
+    cantons:    compactCantons,
     errors,
   };
 
-  fs.writeFileSync(OUT_FILE, JSON.stringify(output, null, 2), 'utf8');
+  fs.writeFileSync(OUT_FILE, JSON.stringify(output), 'utf8');
   console.log(`\n✅ Généré: ${OUT_FILE}`);
   console.log(`   Cantons OK: ${Object.keys(cantonData).join(', ')}`);
   if (errors.length) console.warn(`   Erreurs: ${errors.join('; ')}`);
