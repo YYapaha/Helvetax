@@ -307,13 +307,21 @@ export function JumeauTab() {
             : <>
                 <p style={{ fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-mono)', color: impotDelta > 0 ? '#22c55e' : '#f87171' }}>
                   {impotDelta > 0 ? '−' : '+'}{fmt(Math.abs(impotDelta))} CHF/an
+                  <span style={{ fontSize: 13, fontWeight: 500, marginLeft: 6 }}>
+                    ({impotDelta > 0 ? 'économie' : 'surcoût'})
+                  </span>
                 </p>
                 <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4 }}>
                   {impotDelta > 0
-                    ? `Économie de ${fmt(Math.abs(impotDelta))} CHF/an (−${Math.round(Math.abs(impotDelta) / (taxVous.totalTaxChf) * 100)}% d’impôt)`
-                    : `Surcoût de ${fmt(Math.abs(impotDelta))} CHF/an`
+                    ? `−${Math.round(Math.abs(impotDelta) / taxVous.totalTaxChf * 100)}% d'impôt · sur 10 ans : ${fmt(Math.abs(impotDelta) * 10)} CHF économisés`
+                    : `+${Math.round(Math.abs(impotDelta) / taxVous.totalTaxChf * 100)}% d'impôt · sur 10 ans : ${fmt(Math.abs(impotDelta) * 10)} CHF de surcoût`
                   }
                 </p>
+                {activeScenario === 'augmentation' && (
+                  <p style={{ fontSize: 12, marginTop: 10, padding: '8px 12px', borderRadius: 10, background: 'rgba(79,142,247,0.10)', color: '#4f8ef7', textAlign: 'left' }}>
+                    💡 Pensez à ajuster vos frais de transport ou votre pilier 3a pour compenser cette hausse de revenu imposable.
+                  </p>
+                )}
               </>
           }
         </div>
@@ -341,7 +349,7 @@ export function JumeauTab() {
       </div>
 
       <p style={{ fontSize: 11, color: 'var(--text-3)', textAlign: 'center' }}>
-        Simulation basée sur le revenu imposable estimé à 80&nbsp;% du brut. Résultat indicatif.
+        Simulation basée sur le revenu imposable estimé à 80 % du brut. Résultat indicatif.
       </p>
     </div>
   );
