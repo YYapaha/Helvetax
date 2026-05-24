@@ -57,53 +57,67 @@ async function downloadZip(canton: string, url: string): Promise<Buffer> {
 }
 
 /**
- * Parse un fichier TXT AFC (format fixe, séparateur point-virgule ou espace)
- * Retourne un tableau de lignes de barème : { revenu, taux, montant }
+ * Parse un fichier TXT AFC au format fixe (Recordart 06)
+ * Documentation: AFC "Aufbau der Tarife" — positions 1-indexées, converties en substring JS (0-indexé)
  *
- * Format AFC documenté: https://www.estv.admin.ch/dam/estv/fr/dokumente/quellensteuer/tarife/tarifaufbau.pdf
- * Structure typique:
- *   KANTON;TARIF;PERIODE;VON_BRUTTO;BIS_BRUTTO;STEUER_BETRAG;STEUER_SATZ
+ * Positions confirmées (0-indexé JS):
+ *   [0,2)   Recordart    — '06' pour les lignes de barème
+ *   [4,6)   Canton       — ex: 'VS'
+ *   [6,16)  codeBarème   — ex: 'A0N', 'B1N'
+ *   [16,24) Date         — 'AAAAMMJJ' (ignoré)
+ *   [24,33) RevenuCents  — revenu mensuel brut en centimes → ÷100 = CHF
+ *   [33,42) PasCents     — pas de progression en centimes → ÷100 = CHF
+ *   [43,45) Enfants      — nombre d'enfants (2 chiffres)
+ *   [45,54) MontantCents — impôt minimum en centimes → ÷100 = CHF
+ *   [54,59) Taux5        — taux sur 5 chiffres implicite 2 déc. → ÷10000 = décimal
+ *                           ex: '01150' → 0.1150
  */
 function parseTarifFile(content: string): AfcTarifRow[] {
   const rows: AfcTarifRow[] = [];
-  const lines = content.split('\n').filter(l => l.trim());
+  const lines = content.split('\n');
 
   for (const line of lines) {
-    // Skip headers / metadata
-    if (line.startsWith('#') || line.startsWith('*') || !/^\d/.test(line.trim())) continue;
+    // Une ligne Recordart 06 fait au moins 59 caractères
+    if (line.length < 59) continue;
+    if (line.substring(0, 2) !== '06') continue;
 
-    // Essaie séparateur ';' d'abord, puis whitespace
-    const parts = line.includes(';')
-      ? line.split(';').map(s => s.trim())
-      : line.trim().split(/\s+/);
-
-    if (parts.length < 4) continue;
-
-    const row = parseAfcRow(parts);
+    const row = parseAfcRow(line);
     if (row) rows.push(row);
   }
   return rows;
 }
 
 interface AfcTarifRow {
-  tarif:       string;   // ex: 'A0', 'B1', 'C2'...
-  fromBrut:    number;   // revenu brut annuel de (CHF)
-  toBrut:      number;   // revenu brut annuel jusqu'à (CHF)
-  taxAmount:   number;   // montant impôt (CHF)
-  taxRate:     number;   // taux en % (0-100)
+  canton:       string;   // ex: 'VS', 'VD', 'GE', 'NE'
+  codeBareme:   string;   // ex: 'A0N', 'B1N', 'C2N'
+  revenu:       number;   // revenu mensuel brut minimum (CHF)
+  pas:          number;   // pas de progression (CHF)
+  enfants:      number;   // nombre d'enfants
+  impotMinimum: number;   // montant d'impôt minimum (CHF)
+  taux:         number;   // taux marginal décimal (ex: 0.1150)
 }
 
-function parseAfcRow(parts: string[]): AfcTarifRow | null {
+function parseAfcRow(line: string): AfcTarifRow | null {
   try {
-    // Position flexible selon canton — on cherche les colonnes numériques
-    const nums = parts.map(p => parseFloat(p.replace(/'/g, '').replace(',', '.'))).filter(n => !isNaN(n));
-    if (nums.length < 3) return null;
+    const canton       = line.substring(4,  6).trim();
+    const codeBareme   = line.substring(6,  16).trim();
+    const revenuCents  = parseInt(line.substring(24, 33), 10);
+    const pasCents     = parseInt(line.substring(33, 42), 10);
+    const enfants      = parseInt(line.substring(43, 45), 10);
+    const montantCents = parseInt(line.substring(45, 54), 10);
+    const taux5        = parseInt(line.substring(54, 59), 10);
+
+    if (!canton || !codeBareme)                    return null;
+    if (isNaN(revenuCents) || isNaN(taux5))        return null;
+
     return {
-      tarif:     parts[0] ?? '',
-      fromBrut:  nums[0] ?? 0,
-      toBrut:    nums[1] ?? 0,
-      taxAmount: nums[2] ?? 0,
-      taxRate:   nums[3] ?? 0,
+      canton,
+      codeBareme,
+      revenu:       revenuCents  / 100,
+      pas:          isNaN(pasCents)     ? 0 : pasCents  / 100,
+      enfants:      isNaN(enfants)      ? 0 : enfants,
+      impotMinimum: isNaN(montantCents) ? 0 : montantCents / 100,
+      taux:         taux5 / 10000,
     };
   } catch {
     return null;
@@ -193,6 +207,22 @@ async function main() {
   console.log(`\n✅ Généré: ${OUT_FILE}`);
   console.log(`   Cantons OK: ${Object.keys(cantonData).join(', ')}`);
   if (errors.length) console.warn(`   Erreurs: ${errors.join('; ')}`);
+
+  // ── Échantillon de validation ─────────────────────────────────────────────
+  console.log('\n── Échantillon parsé (5 premières lignes par canton) ──────────────────');
+  for (const [canton, data] of Object.entries(cantonData)) {
+    const allRows: AfcTarifRow[] = Object.values(data.tarifs).flat();
+    const sample = allRows.slice(0, 5);
+    console.log(`\n[${canton}] ${allRows.length} lignes totales`);
+    for (const r of sample) {
+      console.log(
+        `  barème=${r.codeBareme.padEnd(10)} enf=${r.enfants}` +
+        `  revenu=${String(r.revenu).padStart(8)} CHF` +
+        `  taux=${(r.taux * 100).toFixed(4).padStart(8)} %` +
+        `  impôtMin=${String(r.impotMinimum).padStart(8)} CHF`
+      );
+    }
+  }
 }
 
 main().catch(err => { console.error(err); process.exit(1); });
