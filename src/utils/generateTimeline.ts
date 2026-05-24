@@ -33,6 +33,11 @@ export function generateTimeline(profile: UserProfile): TimelineMonth[] {
   const annualIncome = income * 12;
   const has3a   = profile.has3a === 'yes';
 
+  // Seuil IS : au-dessus = déclaration obligatoire ; en-dessous = TOU facultative
+  const seuil        = cc.seuilDeclarationIS;
+  const fmtSeuil     = seuil.toLocaleString('fr-CH');
+  const isAboveSeuil = isPermitB && annualIncome >= seuil;
+
   // All events keyed by month (1=Jan ... 12=Dec)
   const raw: Array<{ month: number; event: TimelineEvent; show?: boolean }> = [
 
@@ -50,7 +55,10 @@ export function generateTimeline(profile: UserProfile): TimelineMonth[] {
     { month: 2, event: { id: 'fev-4', title: 'Préparer la comptabilité 2025', detail: 'Rassembler toutes les factures et charges de l\'année', type: 'warning' }, show: isSelf },
 
     /* ── Mars ────────────────────────────────────────────────────────── */
-    { month: cc.touMonth, event: { id: 'tou-1', title: `DEADLINE : TOU Permis B avant ${cc.touLabel}`, detail: `Taxé ordinairement ultérieurement — à demander au ${cc.taxAuthority} si revenus/déductions importants`, type: 'critical', day: cc.touDay }, show: isPermitB },
+    // Déclaration OBLIGATOIRE si revenu annuel ≥ seuil IS (120k VS/VD/NE · 500k GE)
+    { month: cc.touMonth, event: { id: 'tou-mandatory', title: `DEADLINE : Déclaration obligatoire IS — ${cc.touLabel}`, detail: `Ton revenu (${annualIncome.toLocaleString('fr-CH')} CHF/an) dépasse le seuil de ${fmtSeuil} CHF → déclaration ordinaire obligatoire. À remettre au ${cc.taxAuthority}.`, type: 'critical', day: cc.touDay }, show: isAboveSeuil },
+    // TOU FACULTATIVE si revenu annuel < seuil IS — recommandée si déductions importantes
+    { month: cc.touMonth, event: { id: 'tou-1', title: `TOU facultative — à demander avant ${cc.touLabel}`, detail: `En dessous du seuil de ${fmtSeuil} CHF/an, tu restes imposé à la source. TOU recommandée si 3a, frais pro ou dons importants. Gain typique : 500–3\'000 CHF.`, type: 'warning', day: cc.touDay }, show: isPermitB && !isAboveSeuil },
     { month: 3, event: { id: 'mar-2', title: 'Rassembler factures médicales 2025', detail: 'Frais non remboursés > 5% du revenu net', type: 'info', actionId: '10' } },
     { month: 3, event: { id: 'mar-3', title: 'Rassembler factures crèche / garderie', detail: 'Tous les reçus de l\'année pour la déduction enfants', type: 'info', actionId: '9' }, show: Number(profile.children) > 0 },
     { month: 3, event: { id: 'mar-4', title: 'Rassembler factures formation continue', detail: 'Certificats et factures liés à l\'activité professionnelle', type: 'info', actionId: '7' } },
@@ -58,7 +66,8 @@ export function generateTimeline(profile: UserProfile): TimelineMonth[] {
     { month: 3, event: { id: 'mar-6', title: 'Payer acomptes AVS Q1', detail: 'Paiement avant fin mars', type: 'warning', actionId: '30' }, show: isSelf },
 
     /* ── Avril ───────────────────────────────────────────────────────── */
-    { month: cc.declarationMonth, event: { id: 'decl-1', title: `DEADLINE : Déclaration d'impôts — ${cc.declarationLabel}`, detail: cc.declarationExtension, type: 'critical', day: cc.declarationDay } },
+    // Déclaration ordinaire : permis C/CH toujours · permis B uniquement si revenu ≥ seuil IS
+    { month: cc.declarationMonth, event: { id: 'decl-1', title: `DEADLINE : Déclaration d'impôts — ${cc.declarationLabel}`, detail: cc.declarationExtension, type: 'critical', day: cc.declarationDay }, show: !isPermitB || isAboveSeuil },
     { month: 4, event: { id: 'avr-2', title: 'Déduire frais professionnels', detail: 'Transport (0.70 CHF/km ou TP) + repas 3\'200 CHF forfait', type: 'warning', actionId: '2' } },
     { month: 4, event: { id: 'avr-3', title: 'Récupérer impôt anticipé 35%', detail: 'Déclarer dividendes et intérêts suisses pour récupérer les 35%', type: 'positive', actionId: '33' } },
     { month: 4, event: { id: 'avr-4', title: 'Déduire dons et cotisations syndicales', detail: 'Joindre attestations organisations Zewo', type: 'info', actionId: '11' } },

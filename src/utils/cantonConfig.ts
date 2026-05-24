@@ -13,6 +13,13 @@ export interface CantonConfig {
   touDay: number;
   touLabel: string;
   touSource: string;
+  /**
+   * Seuil de revenu brut annuel (CHF) au-delà duquel la déclaration ordinaire
+   * est OBLIGATOIRE pour les personnes imposées à la source (permis B).
+   * En-dessous : IS applicable, TOU facultative (art. 99a LIFD).
+   * GE = 500 000 CHF (exception cantonale) — VS/VD/NE = 120 000 CHF.
+   */
+  seuilDeclarationIS: number;
   // LAMal subsidies
   subsidesInfo: string;            // how to get them
   subsidesURL: string;
@@ -36,6 +43,7 @@ export const CANTON_CONFIG: Record<Canton, CantonConfig> = {
     touDay: 31,
     touLabel: '31 mars',
     touSource: 'https://www.vs.ch/web/scc/impots-sourciers',
+    seuilDeclarationIS: 120_000,
     subsidesInfo: 'Notification automatique de la commune fin février — vérifier sur le portail AVS Valais. Pas de demande à faire, c\'est automatique si tu es éligible.',
     subsidesURL: 'https://www.avsvalais.ch',
     subsidesDeadline: 'Notification automatique fin février',
@@ -54,6 +62,7 @@ export const CANTON_CONFIG: Record<Canton, CantonConfig> = {
     touDay: 31,
     touLabel: '31 mars',
     touSource: 'https://www.vd.ch/themes/etat-droit-finances/impots/impots-sourciers',
+    seuilDeclarationIS: 120_000,
     subsidesInfo: 'Demande active requise via le Service de l\'assurance maladie (SAM). Contrairement à d\'autres cantons, ce n\'est pas automatique — tu dois faire la demande chaque année.',
     subsidesURL: 'https://www.vd.ch/themes/sante-et-social/assurance-maladie/subsides-lca',
     subsidesDeadline: 'Demande à faire avant le 30 septembre pour l\'année suivante',
@@ -72,6 +81,7 @@ export const CANTON_CONFIG: Record<Canton, CantonConfig> = {
     touDay: 31,
     touLabel: '31 mars',
     touSource: 'https://www.ge.ch/impots/sourciers',
+    seuilDeclarationIS: 500_000,  // exception cantonale genevoise (art. 33 RIPS-GE)
     subsidesInfo: 'Via le Service des prestations complémentaires (SPC). Calculateur en ligne disponible. Demande à faire si pas encore bénéficiaire.',
     subsidesURL: 'https://www.ge.ch/spc',
     subsidesDeadline: 'Demande en continu, réévaluation annuelle automatique',
@@ -90,6 +100,7 @@ export const CANTON_CONFIG: Record<Canton, CantonConfig> = {
     touDay: 31,
     touLabel: '31 mars',
     touSource: 'https://www.ne.ch/autorites/DFS/SCCOI/Pages/accueil.aspx',
+    seuilDeclarationIS: 120_000,
     subsidesInfo: 'Via l\'Office de l\'assurance-invalidité et des prestations complémentaires (OAI/PC). Demande à formuler auprès du service cantonal.',
     subsidesURL: 'https://www.ne.ch/autorites/DFS/OAS/subsides/Pages/accueil.aspx',
     subsidesDeadline: 'Demande annuelle, réévaluation selon revenu',

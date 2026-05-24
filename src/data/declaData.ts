@@ -4,6 +4,7 @@ import type {
   Badge, FieldItem, SimInputs, SimResult, SubmitStepItem,
 } from '../types/decla';
 import { getMarginalRateSimple } from '../utils/taxBrackets';
+import { getCantonConfig } from '../utils/cantonConfig';
 
 // ── Helpers internes ──────────────────────────────────────────────────────────
 
@@ -30,21 +31,29 @@ interface ProfileDerived {
   children: number;
   has3a: boolean;
   canton: string;
+  /** Seuil IS du canton (120k VS/VD/NE · 500k GE) */
+  seuilDeclarationIS: number;
+  /** true si revenu ≥ seuil → déclaration ordinaire obligatoire pour permis B */
+  isAboveSeuil: boolean;
 }
 
 function derive(p: UserProfile): ProfileDerived {
   const annualIncome = (p.income ?? 0) * 12;
+  const cc           = getCantonConfig(p.canton ?? 'VS');
+  const isPermitB    = p.permit === 'B' || p.permit === 'L';
   return {
     annualIncome,
-    marginalRate:  getMarginalRate(annualIncome, p.canton ?? 'VS', p.situation ?? 'single'),
-    isPermitB:     p.permit === 'B' || p.permit === 'L',
-    conjointC:     p.conjoint_permit === 'C' || p.conjoint_permit === 'CH',
-    isOwner:       p.housing === 'owner' || p.housing === 'owner_rental',
-    isSelf:        p.activity === 'self' || p.activity === 'both',
-    isCouple:      p.situation === 'couple',
-    children:      p.children ?? 0,
-    has3a:         p.has3a === 'yes',
-    canton:        p.canton ?? 'VS',
+    marginalRate:      getMarginalRate(annualIncome, p.canton ?? 'VS', p.situation ?? 'single'),
+    isPermitB,
+    conjointC:         p.conjoint_permit === 'C' || p.conjoint_permit === 'CH',
+    isOwner:           p.housing === 'owner' || p.housing === 'owner_rental',
+    isSelf:            p.activity === 'self' || p.activity === 'both',
+    isCouple:          p.situation === 'couple',
+    children:          p.children ?? 0,
+    has3a:             p.has3a === 'yes',
+    canton:            p.canton ?? 'VS',
+    seuilDeclarationIS: cc.seuilDeclarationIS,
+    isAboveSeuil:      isPermitB && annualIncome >= cc.seuilDeclarationIS,
   };
 }
 
@@ -52,7 +61,7 @@ function derive(p: UserProfile): ProfileDerived {
 
 export function getKPIs(p: UserProfile): DeclaKPI[] {
   const { annualIncome, marginalRate, isPermitB, conjointC, has3a,
-          isCouple, isOwner, children } = derive(p);
+          isCouple, isOwner, children, isAboveSeuil } = derive(p);
 
   // Estimation du remboursement possible
   const gain3a        = has3a ? Math.round(7_258 * marginalRate) : 0;
@@ -71,7 +80,10 @@ export function getKPIs(p: UserProfile): DeclaKPI[] {
     + (p.activity === 'self' ? 1 : 0)
     + 2; // bancaire + médical optionnels toujours listés
 
-  const deadline = isPermitB && !conjointC ? 'TOU d\'abord' : '31 mars 2026';
+  // Deadline affichée dans le KPI "Deadline"
+  const deadline = isPermitB && !conjointC
+    ? (isAboveSeuil ? 'Décla obligatoire' : 'TOU facultative')
+    : '31 mars 2026';
 
   return [
     { value: deadline,                                          label: 'Deadline',                color: 'danger'  },
@@ -84,24 +96,41 @@ export function getKPIs(p: UserProfile): DeclaKPI[] {
 // ── Intro cards ───────────────────────────────────────────────────────────────
 
 export function getIntroCards(p: UserProfile): IntroCard[] {
-  const { isPermitB, conjointC } = derive(p);
+  const { isPermitB, conjointC, isAboveSeuil, seuilDeclarationIS, canton } = derive(p);
+  const fmtSeuil = seuilDeclarationIS.toLocaleString('fr-CH');
+
+  // Outil de déclaration selon le canton
+  const cantonTool = canton === 'GE' ? 'GeTax (ge.ch/impots)'
+    : canton === 'VD' ? 'VaudTax (vd.ch/impots)'
+    : canton === 'NE' ? 'NeO (ne.ch/impots)'
+    : 'VStax (vs.ch/scc-vstax)';
 
   const vstaxCard: IntroCard = {
     type:  'info',
-    ref:   'Logiciel officiel Valais',
-    name:  'VStax — Télécharger et installer',
-    where: 'Télécharge depuis vs.ch → section VStax. Lance le logiciel et importe l\'année précédente si disponible.',
-    tip:   'VStax est organisé en 4 pages : Bases → Revenus → Déductions → Fortune. Navigation via la flèche en bas à droite.',
+    ref:   `Logiciel officiel ${canton}`,
+    name:  `${cantonTool} — Télécharger et installer`,
+    where: `Télécharge depuis le site cantonal. Lance le logiciel et importe l'année précédente si disponible.`,
+    tip:   'Organise ta déclaration en sections : Bases → Revenus → Déductions → Fortune. Sauvegarde régulièrement.',
   };
 
   let situationCard: IntroCard;
-  if (isPermitB && !conjointC) {
+  if (isPermitB && !conjointC && isAboveSeuil) {
+    // Revenu ≥ seuil → déclaration OBLIGATOIRE
     situationCard = {
       type:  'important',
-      ref:   'Situation fiscale — Action requise',
-      name:  'Permis B → TOU requise avant le 31 mars 2026',
-      where: 'Va sur vs.ch → Impôt à la source → TOU sur demande. Formulaire en ligne (~10 min). Décision irréversible.',
-      tip:   'La TOU est obligatoire une seule fois. Ensuite tu fais une déclaration automatiquement chaque année. Gain typique : 2\'000–8\'000 CHF.',
+      ref:   'Situation fiscale — Action obligatoire',
+      name:  `Permis B · revenu > ${fmtSeuil} CHF → Déclaration ordinaire obligatoire`,
+      where: `Ton revenu annuel dépasse le seuil d'assujettissement IS du canton (${fmtSeuil} CHF). Tu dois déposer une déclaration ordinaire avant le 31 mars, comme tout contribuable C/CH.`,
+      tip:   'Toutes les déductions sont accessibles : 3a, frais pro, frais médicaux, dons. L\'impôt retenu à la source sera déduit du montant final dû.',
+    };
+  } else if (isPermitB && !conjointC && !isAboveSeuil) {
+    // Revenu < seuil → IS applicable, TOU FACULTATIVE
+    situationCard = {
+      type:  'autofill',
+      ref:   'Situation fiscale — IS · TOU facultative',
+      name:  `Permis B · revenu < ${fmtSeuil} CHF → Imposé à la source (TOU optionnelle)`,
+      where: `Tu es en dessous du seuil d'assujettissement (${fmtSeuil} CHF/an). L'impôt à la source est définitif. Tu peux demander une TOU facultative avant le 31 mars si tu as des déductions importantes.`,
+      tip:   `TOU recommandée si tu verses dans le 3a, as des frais pro élevés ou des frais médicaux importants. Gain typique : 500–3'000 CHF. Sans TOU : aucune démarche à faire.`,
     };
   } else if (isPermitB && conjointC) {
     situationCard = {
@@ -474,43 +503,83 @@ export function calcSimulation(inputs: SimInputs): SimResult {
 // ── Étapes de soumission ──────────────────────────────────────────────────────
 
 export function getSubmitSteps(p: UserProfile): SubmitStepItem[] {
-  const { isPermitB, conjointC } = derive(p);
+  const { isPermitB, conjointC, isAboveSeuil, canton } = derive(p);
 
-  if (isPermitB && !conjointC) {
+  const cc = getCantonConfig(canton);
+  const touUrl  = cc.touSource;
+  const declUrl = cc.declarationSource;
+
+  if (isPermitB && !conjointC && !isAboveSeuil) {
+    // Permis B · revenu < seuil → IS définitif, TOU FACULTATIVE
     return [
       {
         n: 1,
-        title: 'Faire la demande de TOU',
-        desc:  'Va sur vs.ch → Impôt à la source → TOU sur demande. Formulaire en ligne (~10 min). Décision irréversible — tu devras faire une déclaration chaque année ensuite.',
-        link:     'https://www.vs.ch/web/scc/impot-a-la-source',
-        linkText: 'Formulaire TOU officiel',
+        title: 'Évaluer si la TOU est avantageuse',
+        desc:  'Compare tes déductions potentielles (3a, frais pro, frais médicaux) avec ton impôt à la source actuel. Si tes déductions dépassent les abattements forfaitaires inclus dans ton barème, la TOU te remboursera la différence.',
       },
       {
         n: 2,
-        title: 'Recevoir le dossier du canton',
-        desc:  'Le Service cantonal des contributions t\'envoie un courrier (4–8 semaines). Tu peux aussi télécharger VStax directement.',
-        link:     'https://www.vs.ch/web/ext-cant-gouv-scc-vstax/telechargement-du-vstax',
-        linkText: 'Télécharger VStax',
+        title: 'Décider : TOU ou pas ?',
+        desc:  'Sans TOU : aucune démarche à faire — l\'IS prélevé par ton employeur est définitif. Avec TOU : décision irréversible — tu devras déposer une déclaration chaque année. Réfléchis à long terme.',
+        link:     touUrl,
+        linkText: 'Informations officielles TOU',
       },
       {
         n: 3,
-        title: 'Remplir la déclaration dans VStax',
-        desc:  'Utilise ce guide section par section. Suis les 4 pages : Bases → Revenus → Déductions → Fortune. Sauvegarde régulièrement.',
+        title: 'Si TOU choisie : faire la demande avant le 31 mars',
+        desc:  'Formulaire en ligne sur le portail cantonal (~10 min). Joindre le certificat de salaire. Tu recevras un courrier du canton dans les 4–8 semaines.',
+        link:     touUrl,
+        linkText: 'Formulaire TOU officiel',
+      },
+      {
+        n: 4,
+        title: 'Si TOU choisie : remplir la déclaration',
+        desc:  'Utilise le logiciel cantonal. Suis les 4 sections : Bases → Revenus → Déductions → Fortune. L\'impôt à la source déjà prélevé sera déduit automatiquement.',
+      },
+      {
+        n: 5,
+        title: 'Attendre la décision de taxation',
+        desc:  'Délai : 2–4 mois. Le remboursement (si applicable) est versé directement sur ton compte. En cas de désaccord : opposition dans les 30 jours.',
+      },
+    ];
+  }
+
+  if (isPermitB && !conjointC && isAboveSeuil) {
+    // Permis B · revenu ≥ seuil → déclaration OBLIGATOIRE
+    return [
+      {
+        n: 1,
+        title: 'Déclaration obligatoire — aucune option IS',
+        desc:  `Ton revenu dépasse le seuil cantonal (${cc.seuilDeclarationIS.toLocaleString('fr-CH')} CHF/an). Tu dois déposer une déclaration ordinaire avant le ${cc.declarationLabel}. L'impôt à la source prélevé sera déduit du montant final.`,
+        link:     declUrl,
+        linkText: 'Portail cantonal déclaration',
+      },
+      {
+        n: 2,
+        title: 'Rassembler les justificatifs',
+        desc:  'Certificat de salaire, attestation 3a, frais pro, frais médicaux non remboursés, dons. Tout ce qui figure dans ce guide.',
+      },
+      {
+        n: 3,
+        title: 'Remplir la déclaration avec le logiciel cantonal',
+        desc:  'Télécharge le logiciel de déclaration cantonal. Suis les 4 sections : Bases → Revenus → Déductions → Fortune. Sauvegarde régulièrement.',
+        link:     declUrl,
+        linkText: 'Télécharger le logiciel cantonal',
       },
       {
         n: 4,
         title: 'Joindre les documents scannés',
-        desc:  'Scanne tes justificatifs et attache-les dans VStax (drag & drop). Certificat de salaire + attestation 3a minimum.',
+        desc:  'Scanne et attache tes justificatifs (drag & drop). Certificat de salaire et attestation 3a sont minimum requis.',
       },
       {
         n: 5,
-        title: 'Envoyer électroniquement',
-        desc:  'Clique "Envoyer électroniquement" dans VStax. Tu reçois un accusé de réception automatique. Conserve une copie PDF.',
+        title: 'Soumettre avant le ' + cc.declarationLabel,
+        desc:  'Envoi électronique depuis le logiciel. Tu reçois un accusé de réception. Conserve une copie PDF.',
       },
       {
         n: 6,
         title: 'Attendre la décision de taxation',
-        desc:  'Délai : 2–4 mois. Le canton t\'envoie la décision. En cas de désaccord : opposition possible dans les 30 jours.',
+        desc:  'Délai : 2–4 mois. En cas de désaccord : opposition possible dans les 30 jours suivant réception.',
       },
     ];
   }
