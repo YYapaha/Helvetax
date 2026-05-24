@@ -479,17 +479,17 @@ export function generateActions(profile: UserProfile): Action[] {
     });
   }
 
-  // ACTION 36: Pilier 3b (GE/FR)
-  if (canton === 'GE' || canton === 'FR') {
-    const pillar3bMax = canton === 'GE' ? 2200 : 750;
+  // ACTION 36: Pilier 3b (GE uniquement — FR non supporté)
+  if (canton === 'GE') {
+    const pillar3bMax = 2200;
     actions.push({
       id: '36',
-      titre: `🏦 Pilier 3b déductible (spécifique ${canton === 'GE' ? 'Genève' : 'Fribourg'}!)`,
+      titre: `🏦 Pilier 3b déductible (spécifique Genève!)`,
       category: '3a',
       priority: 'medium',
       gain: Math.round(pillar3bMax * marginalRate),
-      guide: `Avantage exclusif ${canton === 'GE' ? 'GENEVOIS' : 'FRIBOURGEOIS'} !\n\nPlafond 2026 ${canton === 'GE' ? 'Genève' : 'Fribourg'}: ${pillar3bMax} CHF\n\nAssurance vie flexible — retrait quand tu veux\n(contrairement au 3a bloqué jusqu'à 65 ans)`,
-      why: 'Seuls Genève et Fribourg offrent une déduction pour le 3b.',
+      guide: `Avantage exclusif GENEVOIS !\n\nPlafond 2026 Genève: ${pillar3bMax} CHF\n\nAssurance vie flexible — retrait quand tu veux\n(contrairement au 3a bloqué jusqu'à 65 ans)`,
+      why: 'Genève offre une déduction pour le 3b (assurance-vie) en plus du 3a.',
       checklist: ['Contacter BCG/BCF', 'Ouvrir assurance 3b', 'Maxer avant 31.12'],
     });
   }

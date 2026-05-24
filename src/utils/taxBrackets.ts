@@ -11,6 +11,8 @@
  *   → taux marginal combiné (IFD + cantonal + communal)
  */
 
+import type { Canton } from './cantonConfig';
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface TaxBreakdown {
@@ -147,7 +149,7 @@ function calcTotalTax(income: number, brackets: Bracket[]): number {
  */
 export function getMarginalRate(
   annualGrossIncome: number,
-  canton:            string = 'VS',
+  canton:            Canton = 'VS',
   situation:         string = 'single',
   communalCoeff?:    number,
 ): TaxBreakdown {
@@ -194,7 +196,7 @@ export function getMarginalRate(
  */
 export function getMarginalRateSimple(
   annualGrossIncome: number,
-  canton:            string = 'VS',
+  canton:            Canton = 'VS',
   situation:         string = 'single',
 ): number {
   return getMarginalRate(annualGrossIncome, canton, situation).marginalRate;

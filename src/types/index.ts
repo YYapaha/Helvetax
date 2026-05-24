@@ -1,9 +1,13 @@
 // Déclaration Types
 export * from './decla';
 
+// Canton type — central export (defined in cantonConfig, re-exported here for convenience)
+export type { Canton } from '../utils/cantonConfig';
+
 // User Profile Types
+import type { Canton } from '../utils/cantonConfig';
 export interface UserProfile {
-  canton: string;
+  canton: Canton;
   situation: "single" | "couple";
   children: number;
   income: number;

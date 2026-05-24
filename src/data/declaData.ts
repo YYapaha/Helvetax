@@ -5,6 +5,7 @@ import type {
 } from '../types/decla';
 import { getMarginalRateSimple } from '../utils/taxBrackets';
 import { getCantonConfig } from '../utils/cantonConfig';
+import type { Canton } from '../utils/cantonConfig';
 
 // ── Helpers internes ──────────────────────────────────────────────────────────
 
@@ -12,7 +13,7 @@ function fmt(n: number): string {
   return n.toLocaleString('fr-CH');
 }
 
-function getMarginalRate(annualIncome: number, canton = 'VS', situation = 'single'): number {
+function getMarginalRate(annualIncome: number, canton: Canton = 'VS', situation = 'single'): number {
   return getMarginalRateSimple(annualIncome, canton, situation);
 }
 
@@ -30,7 +31,7 @@ interface ProfileDerived {
   isCouple: boolean;
   children: number;
   has3a: boolean;
-  canton: string;
+  canton: Canton;
   /** Seuil IS du canton (120k VS/VD/NE · 500k GE) */
   seuilDeclarationIS: number;
   /** true si revenu ≥ seuil → déclaration ordinaire obligatoire pour permis B */
@@ -39,7 +40,7 @@ interface ProfileDerived {
 
 function derive(p: UserProfile): ProfileDerived {
   const annualIncome = (p.income ?? 0) * 12;
-  const cc           = getCantonConfig(p.canton ?? 'VS');
+  const cc           = getCantonConfig(p.canton);
   const isPermitB    = p.permit === 'B' || p.permit === 'L';
   return {
     annualIncome,
@@ -51,7 +52,7 @@ function derive(p: UserProfile): ProfileDerived {
     isCouple:          p.situation === 'couple',
     children:          p.children ?? 0,
     has3a:             p.has3a === 'yes',
-    canton:            p.canton ?? 'VS',
+    canton:            p.canton,
     seuilDeclarationIS: cc.seuilDeclarationIS,
     isAboveSeuil:      isPermitB && annualIncome >= cc.seuilDeclarationIS,
   };

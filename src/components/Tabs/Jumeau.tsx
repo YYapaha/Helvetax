@@ -4,6 +4,7 @@ import { getMarginalRate } from '../../utils/taxBrackets';
 import { generateActions } from '../../utils/generateActions';
 import { cleanNumber } from '../../utils/numberUtils';
 import type { UserProfile } from '../../types';
+import type { Canton } from '../../utils/cantonConfig';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmt(n: number) { return n.toLocaleString('fr-CH'); }
@@ -16,7 +17,7 @@ function delta(a: number, b: number) {
 // ── Types scénario ────────────────────────────────────────────────────────────
 interface ScenarioState {
   income: string;
-  canton: string;
+  canton: Canton;
   sit: 'single' | 'couple';
   housing: 'renter' | 'owner';
   children: number;

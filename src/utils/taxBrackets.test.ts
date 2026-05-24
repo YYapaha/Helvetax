@@ -71,14 +71,14 @@ describe('getMarginalRate — couples vs célibataires', () => {
 
 describe('getMarginalRate — cantons', () => {
   it('calcule sans erreur pour tous les cantons supportés', () => {
-    for (const canton of ['VS', 'VD', 'GE', 'NE']) {
+    for (const canton of ['VS', 'VD', 'GE', 'NE'] as const) {
       const r = getMarginalRate(80_000, canton, 'single');
       expect(r.totalTaxChf).toBeGreaterThan(0);
     }
   });
 
   it('cantons ont des impôts différents (pas de valeur identique pour tous)', () => {
-    const totals = ['VS', 'VD', 'GE', 'NE'].map(
+    const totals = (['VS', 'VD', 'GE', 'NE'] as const).map(
       (c) => getMarginalRate(100_000, c, 'single').totalTaxChf
     );
     const unique = new Set(totals);

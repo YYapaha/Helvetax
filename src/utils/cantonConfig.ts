@@ -110,6 +110,7 @@ export const CANTON_CONFIG: Record<Canton, CantonConfig> = {
   },
 };
 
-export function getCantonConfig(canton: string): CantonConfig {
-  return CANTON_CONFIG[canton as Canton] ?? CANTON_CONFIG['VS'];
+export function getCantonConfig(canton: Canton): CantonConfig {
+  // Direct lookup — all Canton keys are guaranteed in CANTON_CONFIG
+  return CANTON_CONFIG[canton];
 }

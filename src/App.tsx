@@ -12,6 +12,7 @@ import { JumeauTab } from './components/Tabs/Jumeau';
 import { PageHeader } from './components/Layout/PageHeader';
 import { BottomNav } from './components/Layout/BottomNav';
 import { useProfileStore } from './stores/profileStore';
+import type { Canton } from './utils/cantonConfig';
 import './index.css';
 
 const TAB_SHORT_LABELS: Record<string, string> = {
@@ -35,7 +36,7 @@ const HEADERS: Record<string, { eyebrow: string; title: string; accent: string }
 };
 
 function Onboarding({ onComplete }: { onComplete: (data: any) => void }) {
-  const [canton, setCanton]             = useState('VS');
+  const [canton, setCanton]             = useState<Canton>('VS');
   const [sit, setSit]                   = useState('single');
   const [income, setIncome]             = useState('5000');
   const [permit, setPermit]             = useState('B');
@@ -93,7 +94,7 @@ function Onboarding({ onComplete }: { onComplete: (data: any) => void }) {
           {/* Canton */}
           <div>
             <label style={labelStyle}>Canton</label>
-            <select value={canton} onChange={(e) => setCanton(e.target.value)}
+            <select value={canton} onChange={(e) => setCanton(e.target.value as Canton)}
               style={{ width: '100%', padding: '11px 14px', borderRadius: 12, fontSize: 14, background: 'var(--bg-card)', border: '1.5px solid var(--border)', color: 'var(--text)', outline: 'none', appearance: 'none' as const }}>
               <option value="VS">Valais (VS)</option>
               <option value="VD">Vaud (VD)</option>
