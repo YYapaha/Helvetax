@@ -229,8 +229,8 @@ function App() {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh', minWidth: 0 }}>
         <button
           onClick={() => setSidebarOpen(true)}
-          className="lg:hidden"
-          style={{ position: 'fixed', top: 16, left: 16, zIndex: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(31,29,27,0.08)', cursor: 'pointer' }}
+          className="md:hidden flex items-center justify-center"
+          style={{ position: 'fixed', top: 16, left: 16, zIndex: 40, width: 36, height: 36, borderRadius: 10, background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: '0 2px 8px rgba(31,29,27,0.08)', cursor: 'pointer' }}
           aria-label="Menu"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--text-2)" strokeWidth="1.6" strokeLinecap="round">
@@ -238,8 +238,8 @@ function App() {
           </svg>
         </button>
 
-        <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 80 }} className="lg:pb-0">
-          <div key={activeTab} className="max-w-3xl mx-auto px-5 lg:px-8 animate-slide-up">
+        <div style={{ flex: 1, overflowY: 'auto' }} className="pb-20 md:pb-0">
+          <div key={activeTab} className="max-w-3xl mx-auto px-5 lg:px-8 pt-6 md:pt-0 animate-slide-up">
             <PageHeader eyebrow={header.eyebrow} title={header.title} accent={header.accent} />
             <div style={{ paddingBottom: 40 }}>
               {activeTab === 'actions'  && <ActionsTab />}

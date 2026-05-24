@@ -81,7 +81,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
       {/* More sheet backdrop */}
       {moreOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-40"
+          className="md:hidden fixed inset-0 z-40"
           onClick={() => setMoreOpen(false)}
           style={{ background: 'rgba(31,29,27,0.3)' }}
         />
@@ -89,7 +89,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
 
       {/* More sheet */}
       <div
-        className="lg:hidden fixed left-0 right-0 z-50 transition-all duration-300"
+        className="md:hidden fixed left-0 right-0 z-50 transition-all duration-300"
         style={{
           bottom: moreOpen ? 72 : -200,
           background: 'var(--bg-card)',
@@ -125,13 +125,12 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
 
       {/* Bottom nav bar */}
       <nav
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-40"
+        className="md:hidden flex fixed bottom-0 left-0 right-0 z-40"
         style={{
           background: 'var(--bg-card)',
           borderTop: '1px solid var(--border)',
           height: 'calc(56px + env(safe-area-inset-bottom))',
           paddingBottom: 'env(safe-area-inset-bottom)',
-          display: 'flex',
           alignItems: 'stretch',
         }}
       >
