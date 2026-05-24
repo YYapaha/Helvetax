@@ -14,10 +14,14 @@
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface TaxBreakdown {
-  marginalRate:  number;  // taux marginal combiné (0–1)
-  ifdRate:       number;  // part IFD marginale
-  cantonalRate:  number;  // part cantonale marginale (coefficient inclus)
-  isOfficial:    boolean; // true si barème exact, false si approximation
+  marginalRate:    number;  // taux marginal combiné (0–1), différence finie sur 1 000 CHF
+  ifdRate:         number;  // part IFD marginale
+  cantonalRate:    number;  // part cantonale marginale (coefficient inclus)
+  totalTaxChf:     number;  // impôt total estimé en CHF (IFD + cantonal + communal)
+  ifdTaxChf:       number;  // part IFD en CHF
+  cantonalTaxChf:  number;  // part cantonale+communale en CHF
+  effectiveRate:   number;  // taux effectif = totalTaxChf / revenuImposable
+  isOfficial:      boolean; // true si barème exact, false si approximation
 }
 
 interface Bracket {
@@ -113,20 +117,28 @@ export const DEFAULT_COMMUNAL_COEFF: Record<string, number> = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Retourne le taux marginal pour un revenu donné sur un barème */
-function getMarginalFromBrackets(income: number, brackets: Bracket[]): number {
-  let rate = 0;
-  for (const bracket of brackets) {
-    if (income >= bracket.from) rate = bracket.rate;
-    else break;
+/**
+ * Calcule l'impôt total (CHF) par cumul progressif sur les tranches.
+ * Chaque `rate` est le taux marginal sur l'excédent de ce palier.
+ */
+function calcTotalTax(income: number, brackets: Bracket[]): number {
+  if (income <= 0) return 0;
+  let tax = 0;
+  for (let i = 0; i < brackets.length; i++) {
+    const floor = brackets[i].from;
+    const ceil  = i + 1 < brackets.length ? brackets[i + 1].from : Infinity;
+    if (income <= floor) break;
+    const taxable = Math.min(income, ceil) - floor;
+    tax += taxable * brackets[i].rate;
   }
-  return rate;
+  return tax;
 }
 
 // ── API publique ──────────────────────────────────────────────────────────────
 
 /**
- * Retourne le taux marginal combiné (IFD + cantonal + communal).
+ * Retourne le taux marginal combiné (IFD + cantonal + communal) via différence finie,
+ * ainsi que l'impôt total en CHF et le taux effectif.
  *
  * @param annualGrossIncome  Revenu brut annuel CHF (avant déductions)
  * @param canton             Code canton: 'VS' | 'VD' | 'GE' | 'NE'
@@ -139,30 +151,46 @@ export function getMarginalRate(
   situation:         string = 'single',
   communalCoeff?:    number,
 ): TaxBreakdown {
-  // On estime le revenu imposable ≈ gross × 0.80 (correction forfaitaire déductions standard)
-  const estimatedTaxable = Math.round(annualGrossIncome * 0.80);
+  // Revenu imposable estimé (déductions forfaitaires standard ~20%)
+  const taxable = Math.max(0, Math.round(annualGrossIncome * 0.80));
+  const delta   = 1_000; // CHF — palier différence finie
 
-  const ifdBrackets      = situation === 'couple' ? IFD_B : IFD_A;
-  const cantonBrackets   = CANTONAL_A[canton] ?? CANTONAL_A['VS'];
-  const coeff            = communalCoeff ?? DEFAULT_COMMUNAL_COEFF[canton] ?? 1.30;
+  const ifdBrackets    = situation === 'couple' ? IFD_B : IFD_A;
+  const cantonBrackets = CANTONAL_A[canton] ?? CANTONAL_A['VS'];
+  const coeff          = communalCoeff ?? DEFAULT_COMMUNAL_COEFF[canton] ?? 1.30;
 
-  const ifdRate      = getMarginalFromBrackets(estimatedTaxable, ifdBrackets);
-  const cantonBase   = getMarginalFromBrackets(estimatedTaxable, cantonBrackets);
-  const cantonalRate = cantonBase * coeff;
-  const marginalRate = ifdRate + cantonalRate;
+  // Impôts totaux en CHF
+  const ifdTax0       = calcTotalTax(taxable, ifdBrackets);
+  const ifdTax1       = calcTotalTax(taxable + delta, ifdBrackets);
+  const cantonTax0    = calcTotalTax(taxable, cantonBrackets) * coeff;
+  const cantonTax1    = calcTotalTax(taxable + delta, cantonBrackets) * coeff;
+
+  // Taux marginaux par différence finie
+  const ifdRate      = (ifdTax1 - ifdTax0) / delta;
+  const cantonalRate = (cantonTax1 - cantonTax0) / delta;
+  const marginalRate = Math.min(ifdRate + cantonalRate, 0.45);
+
+  // Totaux
+  const ifdTaxChf      = Math.round(ifdTax0);
+  const cantonalTaxChf = Math.round(cantonTax0);
+  const totalTaxChf    = ifdTaxChf + cantonalTaxChf;
+  const effectiveRate  = taxable > 0 ? totalTaxChf / taxable : 0;
 
   return {
-    marginalRate:  Math.min(marginalRate, 0.45), // cap à 45% (jamais dépassé en CH)
+    marginalRate,
     ifdRate,
     cantonalRate,
-    isOfficial: true, // IFD = officiel; cantonaux = approx affinée
+    totalTaxChf,
+    ifdTaxChf,
+    cantonalTaxChf,
+    effectiveRate,
+    isOfficial: true,
   };
 }
 
 
 /**
  * Raccourci — retourne juste le taux marginal combiné (nombre).
- * Compatible drop-in avec l'ancien getMarginalRate.
  */
 export function getMarginalRateSimple(
   annualGrossIncome: number,

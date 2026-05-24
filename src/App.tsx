@@ -6,6 +6,7 @@ import { ActionsTab } from './components/Tabs/Actions';
 import { TimelineTab } from './components/Tabs/Timeline';
 import { FicheTab } from './components/Tabs/Fiche';
 import { DeclaTab } from './components/Tabs/Decla';
+import { ImpactTab } from './components/Tabs/Impact';
 import { PageHeader } from './components/Layout/PageHeader';
 import { BottomNav } from './components/Layout/BottomNav';
 import { useProfileStore } from './stores/profileStore';
@@ -241,7 +242,7 @@ function App() {
             <div style={{ paddingBottom: 40 }}>
               {activeTab === 'actions'  && <ActionsTab />}
               {activeTab === 'timeline' && <TimelineTab />}
-              {activeTab === 'impact'   && <ComingSoon label="Impact financier" />}
+              {activeTab === 'impact'   && <ImpactTab />}
               {activeTab === 'lexique'  && <ComingSoon label="Lexique fiscal" />}
               {activeTab === 'fiche'    && <FicheTab />}
               {activeTab === 'jumeau'   && <ComingSoon label="Jumeau fiscal" />}

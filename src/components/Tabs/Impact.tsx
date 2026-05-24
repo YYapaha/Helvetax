@@ -1,0 +1,216 @@
+import { useMemo } from 'react';
+import { useProfileStore } from '../../stores/profileStore';
+import { generateActions } from '../../utils/generateActions';
+import { getMarginalRate } from '../../utils/taxBrackets';
+import { cleanNumber } from '../../utils/numberUtils';
+
+// ── Couleurs par catégorie ────────────────────────────────────────────────────
+const CATEGORY_COLORS: Record<string, string> = {
+  '3a':           'var(--accent)',
+  'Frais pro':    '#4f8ef7',
+  'LAMal':        '#22c55e',
+  'Prévoyance':   '#a78bfa',
+  'Déductions':   '#f59e0b',
+  'Immobilier':   '#06b6d4',
+  'Famille':      '#ec4899',
+  'Frais méd.':  '#14b8a6',
+  'Dons':         '#84cc16',
+  'Mobilité':     '#f97316',
+  'Formation':    '#6366f1',
+};
+function catColor(cat: string): string {
+  return CATEGORY_COLORS[cat] ?? 'var(--accent)';
+}
+
+// ── KPI Card ─────────────────────────────────────────────────────────────────
+function KpiCard({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: boolean }) {
+  return (
+    <div style={{
+      flex: 1, minWidth: 0, padding: '16px 18px', borderRadius: 16,
+      background: accent ? 'var(--accent)' : 'var(--bg-card)',
+      border: `1px solid ${accent ? 'transparent' : 'var(--border)'}`,
+    }}>
+      <p style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase', color: accent ? 'rgba(255,255,255,0.75)' : 'var(--text-3)', marginBottom: 6 }}>{label}</p>
+      <p style={{ fontSize: 22, fontWeight: 700, color: accent ? '#fff' : 'var(--text)', lineHeight: 1, fontFamily: 'var(--font-mono)' }}>{value}</p>
+      {sub && <p style={{ fontSize: 11, color: accent ? 'rgba(255,255,255,0.6)' : 'var(--text-3)', marginTop: 4 }}>{sub}</p>}
+    </div>
+  );
+}
+
+// ── Barre horizontale ─────────────────────────────────────────────────────────
+function CategoryBar({ label, gain, maxGain, color, completed, total }: {
+  label: string; gain: number; maxGain: number; color: string; completed: number; total: number;
+}) {
+  const pct = maxGain > 0 ? (gain / maxGain) * 100 : 0;
+  const donePct = total > 0 ? (completed / total) * 100 : 0;
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0, display: 'inline-block' }} />
+          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{label}</span>
+          {completed > 0 && (
+            <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 20, background: 'rgba(34,197,94,0.12)', color: '#22c55e', fontWeight: 600 }}>
+              {completed}/{total} ✓
+            </span>
+          )}
+        </div>
+        <span style={{ fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-mono)', color: 'var(--text)' }}>
+          {gain.toLocaleString('fr-CH')} CHF
+        </span>
+      </div>
+      {/* Track */}
+      <div style={{ height: 8, borderRadius: 8, background: 'var(--border)', overflow: 'hidden', position: 'relative' }}>
+        {/* Gain total */}
+        <div style={{
+          position: 'absolute', left: 0, top: 0, height: '100%',
+          width: `${pct}%`, borderRadius: 8,
+          background: color, opacity: 0.25,
+          transition: 'width 600ms ease',
+        }} />
+        {/* Gain réalisé */}
+        {donePct > 0 && (
+          <div style={{
+            position: 'absolute', left: 0, top: 0, height: '100%',
+            width: `${pct * donePct / 100}%`, borderRadius: 8,
+            background: color,
+            transition: 'width 600ms ease',
+          }} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Composant principal ───────────────────────────────────────────────────────
+export function ImpactTab() {
+  const profile          = useProfileStore((s) => s.profile)!;
+  const completedActions = useProfileStore((s) => s.completedActions);
+
+  const actions = useMemo(() => generateActions(profile), [profile]);
+
+  const annualIncome = cleanNumber(profile.income) * 12;
+  const taxInfo = useMemo(
+    () => getMarginalRate(annualIncome, profile.canton, profile.situation),
+    [annualIncome, profile.canton, profile.situation],
+  );
+
+  // Regrouper par catégorie
+  const byCategory = useMemo(() => {
+    const map: Record<string, { gain: number; ids: string[] }> = {};
+    for (const a of actions) {
+      if (!map[a.category]) map[a.category] = { gain: 0, ids: [] };
+      map[a.category].gain += a.gain;
+      map[a.category].ids.push(a.id);
+    }
+    return Object.entries(map)
+      .map(([cat, { gain, ids }]) => ({
+        cat,
+        gain,
+        ids,
+        completed: ids.filter((id) => completedActions.includes(id)).length,
+      }))
+      .sort((a, b) => b.gain - a.gain);
+  }, [actions, completedActions]);
+
+  const totalGain      = actions.reduce((s, a) => s + a.gain, 0);
+  const realizedGain   = actions.filter((a) => completedActions.includes(a.id)).reduce((s, a) => s + a.gain, 0);
+  const maxCatGain     = byCategory[0]?.gain ?? 1;
+  const doneCount      = completedActions.filter((id) => actions.some((a) => a.id === id)).length;
+  const optimizedTax   = Math.max(0, taxInfo.totalTaxChf - totalGain);
+  const savingsPct     = taxInfo.totalTaxChf > 0
+    ? Math.round((totalGain / taxInfo.totalTaxChf) * 100)
+    : 0;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+      {/* KPIs */}
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <KpiCard
+          label="Gain potentiel"
+          value={`${totalGain.toLocaleString('fr-CH')} CHF`}
+          sub={`${savingsPct}% de votre impôt actuel`}
+          accent
+        />
+        <KpiCard
+          label="Taux marginal"
+          value={`${(taxInfo.marginalRate * 100).toFixed(1)}%`}
+          sub={`Effectif: ${(taxInfo.effectiveRate * 100).toFixed(1)}%`}
+        />
+        <KpiCard
+          label="Impôt estimé"
+          value={`${taxInfo.totalTaxChf.toLocaleString('fr-CH')} CHF`}
+          sub={`IFD: ${taxInfo.ifdTaxChf.toLocaleString('fr-CH')} · Ct: ${taxInfo.cantonalTaxChf.toLocaleString('fr-CH')}`}
+        />
+      </div>
+
+      {/* Progression globale */}
+      <div style={{ padding: '16px 18px', borderRadius: 16, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Progression globale</p>
+          <p style={{ fontSize: 12, color: 'var(--text-3)' }}>{doneCount}/{actions.length} actions</p>
+        </div>
+        <div style={{ height: 10, borderRadius: 10, background: 'var(--border)', overflow: 'hidden' }}>
+          <div style={{
+            height: '100%', borderRadius: 10, background: 'var(--accent)',
+            width: `${actions.length > 0 ? (doneCount / actions.length) * 100 : 0}%`,
+            transition: 'width 600ms ease',
+          }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
+          <p style={{ fontSize: 12, color: 'var(--text-3)' }}>
+            Économies réalisées: <strong style={{ color: '#22c55e' }}>{realizedGain.toLocaleString('fr-CH')} CHF</strong>
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--text-3)' }}>
+            Restant: <strong style={{ color: 'var(--text-2)' }}>{(totalGain - realizedGain).toLocaleString('fr-CH')} CHF</strong>
+          </p>
+        </div>
+      </div>
+
+      {/* Avant / Après */}
+      <div style={{ padding: '16px 18px', borderRadius: 16, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 14 }}>Impôt avant / après optimisation</p>
+        <div style={{ display: 'flex', gap: 16 }}>
+          {[
+            { label: 'Avant', chf: taxInfo.totalTaxChf, color: 'var(--text-3)' },
+            { label: 'Après', chf: optimizedTax, color: '#22c55e' },
+          ].map(({ label, chf, color }) => (
+            <div key={label} style={{ flex: 1, textAlign: 'center', padding: '14px 0', borderRadius: 12, background: 'var(--bg)', border: '1px solid var(--border)' }}>
+              <p style={{ fontSize: 11, color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{label}</p>
+              <p style={{ fontSize: 20, fontWeight: 700, color, fontFamily: 'var(--font-mono)' }}>
+                {chf.toLocaleString('fr-CH')} <span style={{ fontSize: 12, fontWeight: 400 }}>CHF</span>
+              </p>
+            </div>
+          ))}
+        </div>
+        {totalGain > 0 && (
+          <p style={{ fontSize: 12, color: 'var(--text-3)', textAlign: 'center', marginTop: 10 }}>
+            Économie maximale: <strong style={{ color: 'var(--accent)' }}>{totalGain.toLocaleString('fr-CH')} CHF/an</strong> · soit {savingsPct}% d'impôt en moins
+          </p>
+        )}
+      </div>
+
+      {/* Graphique par catégorie */}
+      <div style={{ padding: '16px 18px', borderRadius: 16, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 18 }}>Gain par catégorie</p>
+        {byCategory.map(({ cat, gain, ids, completed }) => (
+          <CategoryBar
+            key={cat}
+            label={cat}
+            gain={gain}
+            maxGain={maxCatGain}
+            color={catColor(cat)}
+            completed={completed}
+            total={ids.length}
+          />
+        ))}
+      </div>
+
+      {/* Note méthodologie */}
+      <p style={{ fontSize: 11, color: 'var(--text-3)', lineHeight: 1.5, textAlign: 'center' }}>
+        Calculs basés sur taux marginal {(taxInfo.marginalRate * 100).toFixed(1)}% (IFD + cantonal {profile.canton}, différence finie). Revenu imposable estimé à 80% du brut.
+      </p>
+    </div>
+  );
+}
