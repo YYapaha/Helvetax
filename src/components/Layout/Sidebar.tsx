@@ -11,7 +11,7 @@ const TABS = [
   { id: 'impact',   label: 'Impact financier', Icon: IconImpact   },
   { id: 'lexique',  label: 'Lexique',          Icon: IconLexique  },
   { id: 'fiche',    label: 'Ma fiche de paie', Icon: IconFiche    },
-  { id: 'jumeau',   label: 'Jumeau fiscal',    Icon: IconJumeau   },
+  // { id: 'jumeau', label: 'Jumeau fiscal', Icon: IconJumeau }, // MASQUÉ — trop approximatif, à réactiver après améliorations
   { id: 'decla',    label: 'Déclaration',      Icon: IconDecla    },
 ];
 

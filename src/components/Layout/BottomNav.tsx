@@ -41,17 +41,7 @@ const PRIMARY_TABS = [
       </svg>
     ),
   },
-  {
-    id: 'jumeau',
-    label: 'Jumeau',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="8" cy="8" r="3.5" />
-        <circle cx="14" cy="14" r="3.5" />
-        <path d="M11 8h5a2 2 0 0 1 2 2v1M11 14H6a2 2 0 0 1-2-2v-1" strokeWidth="1.4" />
-      </svg>
-    ),
-  },
+  // { id: 'jumeau', label: 'Jumeau', icon: ... }, // MASQUÉ — à réactiver après améliorations
   {
     id: 'more',
     label: 'Plus',
