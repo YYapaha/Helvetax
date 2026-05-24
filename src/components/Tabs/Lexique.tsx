@@ -4,9 +4,10 @@ import { useState, useMemo } from 'react';
 interface Term {
   term: string;
   category: string;
-  short: string;   // définition courte (1 ligne)
-  detail: string;  // explication complète
-  tip?: string;    // conseil pratique
+  short: string;
+  detail: string;
+  tip?: string;
+  source?: { label: string; url: string };
 }
 
 const TERMS: Term[] = [
@@ -16,6 +17,7 @@ const TERMS: Term[] = [
     short: 'Impôt fédéral direct — prélevé par la Confédération',
     detail: "L'IFD est un impôt sur le revenu perçu par la Confédération suisse. Son barème est progressif (0% à 11.5%) et identique dans toute la Suisse. Il s'ajoute aux impôts cantonaux et communaux.",
     tip: 'Déductible de votre revenu imposable cantonal — optimiser l\'IFD réduit aussi la base cantonale.',
+    source: { label: 'estv.admin.ch — Barèmes IFD 2026', url: 'https://www.estv.admin.ch/estv/fr/home/direkte-bundessteuer/dbst-natuerliche-personen/steuertarife.html' },
   },
   {
     term: 'ICC',
@@ -30,6 +32,7 @@ const TERMS: Term[] = [
     short: 'Épargne retraite privée déductible — max 7 258 CHF/an (2026)',
     detail: "Le pilier 3a est un compte d'épargne retraite lié. Chaque franc versé est déductible de votre revenu imposable. Les gains (dividendes, intérêts) ne sont pas imposés annuellement. À la retraite, le capital est imposé séparément à un taux réduit.",
     tip: 'Ouvrez plusieurs comptes 3a (max. 5) pour étaler les retraits et minimiser l\'impôt à la sortie.',
+    source: { label: 'admin.ch — Pilier 3a', url: 'https://www.admin.ch/gov/fr/accueil/documentation/communiques.msg-id-103456.html' },
   },
   {
     term: 'Pilier 3b',
@@ -44,6 +47,7 @@ const TERMS: Term[] = [
     short: 'Prévoyance professionnelle obligatoire — déductible automatiquement',
     detail: "Le pilier 2 (Loi sur la Prévoyance Professionnelle) est géré par votre employeur. Les cotisations sont automatiquement déduites du salaire brut avant calcul de l'impôt à la source. Vous pouvez faire des rachats volontaires très avantageux fiscalement.",
     tip: 'Un rachat LPP est intégralement déductible. Sur un revenu à 30% de taux marginal, 20 000 CHF de rachat = 6 000 CHF d\'économie.',
+    source: { label: 'bsv.admin.ch — LPP', url: 'https://www.bsv.admin.ch/bsv/fr/home/assurances-sociales/bv.html' },
   },
   {
     term: 'Rachat LPP',
@@ -65,6 +69,7 @@ const TERMS: Term[] = [
     short: 'Correction de l\'impôt à la source via déclaration complémentaire',
     detail: "Les contribuables imposés à la source peuvent demander une taxation ordinaire ultérieure pour déduire des frais non pris en compte (3a, frais pro, dons, frais médicaux…). Obligatoire si revenu >120 000 CHF ou patrimoine significatif.",
     tip: 'Demande en ligne via le portail cantonal avant fin mars — récupération moyenne : 500–2 000 CHF/an.',
+    source: { label: 'scc.vs.ch — Impôt à la source', url: 'https://www.vs.ch/web/scc/impot-a-la-source' },
   },
   {
     term: 'Revenu imposable',
@@ -254,7 +259,8 @@ const TERMS: Term[] = [
 ];
 
 // ── Catégories ────────────────────────────────────────────────────────────────
-const CATEGORIES = ['Tous', ...Array.from(new Set(TERMS.map((t) => t.category))).sort()];
+const CATEGORY_ORDER = ['Base', 'Fédéral', 'Cantonal', 'Prévoyance', 'Déductions', 'Assurances', 'Immobilier', 'Famille', 'Documents', 'Salariés étrangers'];
+const CATEGORIES = ['Tous', ...CATEGORY_ORDER.filter((c) => TERMS.some((t) => t.category === c))];
 
 const CAT_COLORS: Record<string, string> = {
   'Fédéral':           'var(--accent)',
@@ -311,12 +317,29 @@ function TermCard({ t }: { t: Term }) {
           {t.tip && (
             <div style={{
               marginTop: 10, padding: '10px 12px', borderRadius: 10,
-              background: 'rgba(201,100,66,0.08)', border: '1px solid rgba(201,100,66,0.2)',
+              background: 'rgba(201,100,66,0.08)',
+              borderLeft: '3px solid var(--accent)',
             }}>
               <p style={{ fontSize: 12, color: 'var(--accent)', lineHeight: 1.5 }}>
-                <strong>💡 Conseil :</strong> {t.tip}
+                💡 {t.tip}
               </p>
             </div>
+          )}
+          {t.source && (
+            <a
+              href={t.source.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8, fontSize: 11, color: 'var(--text-3)', textDecoration: 'none' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--accent)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--text-3)'; }}
+            >
+              <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                <path d="M4.5 2H2a1 1 0 00-1 1v6a1 1 0 001 1h6a1 1 0 001-1V6.5M7 1h3m0 0v3m0-3L4.5 6.5" />
+              </svg>
+              {t.source.label}
+            </a>
           )}
         </div>
       )}
@@ -349,6 +372,7 @@ export function LexiqueTab() {
         </svg>
         <input
           type="text"
+          aria-label="Rechercher un terme fiscal"
           placeholder="Rechercher un terme…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -391,7 +415,9 @@ export function LexiqueTab() {
       {/* Liste */}
       {filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-3)', fontSize: 14 }}>
-          Aucun terme trouvé
+          {search
+            ? <>Aucun terme ne correspond à�<em>{search}</em>�. Essayez un autre mot-clé.</>
+            : 'Aucun terme dans cette catégorie.'}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
