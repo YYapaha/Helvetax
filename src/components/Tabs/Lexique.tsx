@@ -17,7 +17,7 @@ const TERMS: Term[] = [
     short: 'Impôt fédéral direct — prélevé par la Confédération',
     detail: "L'IFD est un impôt sur le revenu perçu par la Confédération suisse. Son barème est progressif (0% à 11.5%) et identique dans toute la Suisse. Il s'ajoute aux impôts cantonaux et communaux.",
     tip: 'Déductible de votre revenu imposable cantonal — optimiser l\'IFD réduit aussi la base cantonale.',
-    source: { label: 'estv.admin.ch — Barèmes IFD 2026', url: 'https://www.estv.admin.ch/estv/fr/home/direkte-bundessteuer/dbst-natuerliche-personen/steuertarife.html' },
+    source: { label: 'estv.admin.ch — Impôt fédéral direct', url: 'https://www.estv.admin.ch/fr/impot-federal-direct' },
   },
   {
     term: 'ICC',
@@ -32,7 +32,7 @@ const TERMS: Term[] = [
     short: 'Épargne retraite privée déductible — max 7 258 CHF/an (2026)',
     detail: "Le pilier 3a est un compte d'épargne retraite lié. Chaque franc versé est déductible de votre revenu imposable. Les gains (dividendes, intérêts) ne sont pas imposés annuellement. À la retraite, le capital est imposé séparément à un taux réduit.",
     tip: 'Ouvrez plusieurs comptes 3a (max. 5) pour étaler les retraits et minimiser l\'impôt à la sortie.',
-    source: { label: 'admin.ch — Pilier 3a', url: 'https://www.admin.ch/gov/fr/accueil/documentation/communiques.msg-id-103456.html' },
+    source: { label: 'admin.ch — Déductions maximales pilier 3a 2026', url: 'https://www.admin.ch/fr/newnsb/xgRMirCsezICX4rtof9Lm' },
   },
   {
     term: 'Pilier 3b',
@@ -69,7 +69,7 @@ const TERMS: Term[] = [
     short: 'Correction de l\'impôt à la source via déclaration complémentaire',
     detail: "Les contribuables imposés à la source peuvent demander une taxation ordinaire ultérieure pour déduire des frais non pris en compte (3a, frais pro, dons, frais médicaux…). Obligatoire si revenu >120 000 CHF ou patrimoine significatif.",
     tip: 'Demande en ligne via le portail cantonal avant fin mars — récupération moyenne : 500–2 000 CHF/an.',
-    source: { label: 'scc.vs.ch — Impôt à la source', url: 'https://www.vs.ch/web/scc/impot-a-la-source' },
+    source: { label: 'vs.ch — Taxation ordinaire ultérieure (TOU)', url: 'https://www.vs.ch/web/scc/tou-2025' },
   },
   {
     term: 'Revenu imposable',
@@ -416,7 +416,7 @@ export function LexiqueTab() {
       {filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-3)', fontSize: 14 }}>
           {search
-            ? <>Aucun terme ne correspond à�<em>{search}</em>�. Essayez un autre mot-clé.</>
+            ? <>Aucun terme ne correspond à�<em>{search}</em>�. Essayez un autre mot-clé.</>
             : 'Aucun terme dans cette catégorie.'}
         </div>
       ) : (
