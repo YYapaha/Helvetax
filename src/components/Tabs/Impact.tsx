@@ -117,9 +117,10 @@ export function ImpactTab() {
   const realizedGain   = actions.filter((a) => completedActions.includes(a.id)).reduce((s, a) => s + a.gain, 0);
   const maxCatGain     = byCategory[0]?.gain ?? 1;
   const doneCount      = completedActions.filter((id) => actions.some((a) => a.id === id)).length;
-  const optimizedTax   = Math.max(0, taxInfo.totalTaxChf - totalGain);
+  const taxSaved       = Math.round(totalGain * taxInfo.marginalRate);
+  const optimizedTax   = Math.max(0, taxInfo.totalTaxChf - taxSaved);
   const savingsPct     = taxInfo.totalTaxChf > 0
-    ? Math.round((totalGain / taxInfo.totalTaxChf) * 100)
+    ? Math.round((taxSaved / taxInfo.totalTaxChf) * 100)
     : 0;
 
   return (
@@ -144,6 +145,9 @@ export function ImpactTab() {
           sub={`IFD: ${taxInfo.ifdTaxChf.toLocaleString('fr-CH')} · Ct: ${taxInfo.cantonalTaxChf.toLocaleString('fr-CH')}`}
         />
       </div>
+      <p style={{ fontSize: 11, color: 'var(--text-3)', marginTop: -12 }}>
+        Impôt estimé sur la base de 80&nbsp;% de votre revenu brut (déductions forfaitaires).
+      </p>
 
       {/* Progression globale */}
       <div style={{ padding: '16px 18px', borderRadius: 16, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
