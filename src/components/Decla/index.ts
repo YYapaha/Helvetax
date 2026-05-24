@@ -1,0 +1,11 @@
+export { DeclaProgress } from './DeclaProgress';
+export { DocCheckItem } from './DocCheckItem';
+export { FieldCard } from './FieldCard';
+export { SimCalc } from './SimCalc';
+export { SubmitChecklist } from './SubmitChecklist';
+export { SectionIntro } from './SectionIntro';
+export { SectionDocs } from './SectionDocs';
+export { SectionRevenus } from './SectionRevenus';
+export { SectionDeductions } from './SectionDeductions';
+export { SectionSimulation } from './SectionSimulation';
+export { SectionSoumettre } from './SectionSoumettre';
