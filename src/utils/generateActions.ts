@@ -1,5 +1,5 @@
 import type { UserProfile, Action } from '../types';
-import { getMarginalRateSimple } from './taxBrackets';
+import { getMarginalRate } from './taxBrackets';
 import { cleanNumber } from './numberUtils';
 
 export function generateActions(profile: UserProfile): Action[] {
@@ -10,7 +10,7 @@ export function generateActions(profile: UserProfile): Action[] {
   const canton = profile.canton;
   const children = cleanNumber(profile.children);
 
-  const marginalRate = getMarginalRateSimple(annualIncome, canton, profile.situation ?? 'single');
+  const { marginalRate } = getMarginalRate(annualIncome, canton, profile.situation ?? 'single');
 
   // ACTION 1: 3a Pilier
   const pillar3aMax = 7258;

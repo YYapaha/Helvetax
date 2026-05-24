@@ -117,8 +117,13 @@ export function ImpactTab() {
   const realizedGain   = actions.filter((a) => completedActions.includes(a.id)).reduce((s, a) => s + a.gain, 0);
   const maxCatGain     = byCategory[0]?.gain ?? 1;
   const doneCount      = completedActions.filter((id) => actions.some((a) => a.id === id)).length;
-  const taxSaved       = Math.round(totalGain * taxInfo.marginalRate);
-  const optimizedTax   = Math.max(0, taxInfo.totalTaxChf - taxSaved);
+  // Recalcul exact sur revenu diminué des déductions (plus rigoureux que approximation linéaire)
+  const taxInfoOptimized = useMemo(
+    () => getMarginalRate(Math.max(0, annualIncome - totalGain), profile.canton, profile.situation),
+    [annualIncome, totalGain, profile.canton, profile.situation],
+  );
+  const optimizedTax   = taxInfoOptimized.totalTaxChf;
+  const taxSaved       = Math.max(0, taxInfo.totalTaxChf - optimizedTax);
   const savingsPct     = taxInfo.totalTaxChf > 0
     ? Math.round((taxSaved / taxInfo.totalTaxChf) * 100)
     : 0;

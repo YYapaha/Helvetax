@@ -38,7 +38,7 @@ function Onboarding({ onComplete }: { onComplete: (data: any) => void }) {
     onComplete({
       canton,
       situation: sit,
-      children,
+      children: cleanNumber(children),
       income: cleanNumber(income),
       permit,
       housing,
