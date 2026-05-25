@@ -99,9 +99,9 @@ export const CANTON_CONFIG: Record<Canton, CantonConfig> = {
     taxAuthority: 'Direction générale de la fiscalité (DGF)',
     taxURL: 'https://www.vd.ch/themes/etat-droit-finances/impots',
     coefficientNote: 'Coefficient fiscal vaudois : Lausanne 0.795, Nyon 0.655, Renens 0.795. Vérifier sur le simulateur fiscal VD.',
-    fortuneExoneration: 59_400,           // art. 50 LICD-VD 2026 (indexé) — célibataire
-    fortuneExonerationCouple: 118_800,    // art. 50 LICD-VD 2026 — couple
-    fortuneCommunalCoeff: 1.795,          // Lausanne : impôt communal = 79.5% du cantonal → total = 1.795 × cantonal
+    fortuneExoneration: 50_000,            // LICD-VD art. 50 2026 — célibataire (calibration API mai 2026)
+    fortuneExonerationCouple: 50_000,     // LICD-VD art. 50 2026 — couple (même seuil, calibration)
+    fortuneCommunalCoeff: 2.334,          // Lausanne : communal = 133.4% du cantonal → total = 2.334 × cantonal
     fortuneCapPermille: 10,               // art. 52 LICD-VD : plafond 10‰ (= 1%) de la fortune nette
   },
   GE: {
@@ -122,9 +122,9 @@ export const CANTON_CONFIG: Record<Canton, CantonConfig> = {
     taxAuthority: 'Administration fiscale cantonale (AFC)',
     taxURL: 'https://www.ge.ch/impots',
     coefficientNote: 'Genève n\'a pas de coefficient communal — le taux cantonal est uniforme. Avantage : pas de variation selon la commune.',
-    fortuneExoneration: 25_000,           // LIPP-GE art. 56 — célibataire
-    fortuneExonerationCouple: 50_000,     // LIPP-GE art. 56 — couple
-    fortuneCommunalCoeff: 1.00,           // taux uniforme GE, communal déjà inclus dans le barème
+    fortuneExoneration: 82_200,            // LIPP-GE art. 58 2026 (indexé) — célibataire
+    fortuneExonerationCouple: 164_400,    // LIPP-GE art. 58 2026 — couple
+    fortuneCommunalCoeff: 1.86,           // GE + Genève-Ville ≈ 1.86× cantonal (calibration API mai 2026)
     fortuneCapPermille: 0,                // pas de plafond à GE
   },
   NE: {
@@ -145,9 +145,9 @@ export const CANTON_CONFIG: Record<Canton, CantonConfig> = {
     taxAuthority: 'Service cantonal des contributions (SCCOI)',
     taxURL: 'https://www.ne.ch/autorites/DFS/SCCOI',
     coefficientNote: 'Coefficient communal neuchâtelois : La Chaux-de-Fonds 86%, Neuchâtel 80%, Le Locle 91%. Vérifier sur le simulateur cantonal.',
-    fortuneExoneration: 50_000,           // LI-NE — seuil d'imposition célibataire
-    fortuneExonerationCouple: 100_000,    // LI-NE — couple
-    fortuneCommunalCoeff: 1.80,           // Neuchâtel-Ville : communal = 80% du cantonal → total = 1.80 × cantonal
+    fortuneExoneration: 50_000,            // LCdir-NE — seuil d'imposition célibataire
+    fortuneExonerationCouple: 100_000,    // LCdir-NE — couple (joint assessment)
+    fortuneCommunalCoeff: 1.889,          // Neuchâtel-Ville : 88.9% du cantonal → total = 1.889 × cantonal
     fortuneCapPermille: 0,                // pas de plafond à NE
   },
 };

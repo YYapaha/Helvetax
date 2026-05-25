@@ -1,16 +1,24 @@
 /**
  * wealthTax.test.ts — Tests de l'impôt sur la fortune 2026
  *
- * Les tranches WEALTH_BRACKETS sont définies en fortune IMPOSABLE (après abattement).
- * Le coefficient communal chef-lieu est appliqué au total cantonal :
- *   VS Sion : 1.30 · VD Lausanne : 1.795 · GE : 1.00 (all-in) · NE Neuchâtel : 1.80
+ * Barèmes recalibrés mai 2026 via swisstaxcalculator API.
+ * Coefficients communaux (chef-lieu) :
+ *   VS Sion         : 1.30
+ *   VD Lausanne     : 2.334  (= 1 + 1.334 ; communal = 133.4% du cantonal)
+ *   GE Genève-Ville : 1.86   (≈ communal 86% du cantonal)
+ *   NE Neuchâtel    : 1.889  (= 1 + 0.889 ; communal = 88.9% du cantonal)
  *
- * Valeurs de référence calculées à partir des barèmes wealthTax.ts :
- *   VS 200k (single, exon 25k) : cantonal ~725 CHF, total Sion ~943 CHF, effectif ~4.7‰
- *   VS 500k (single)           : cantonal ~2525 CHF, total ~3283 CHF, effectif ~6.6‰
- *   VD 500k (single, exon 59.4k): cantonal ~1011 CHF, total Lausanne ~1815 CHF, effectif ~3.6‰
- *   GE 500k (single, exon 25k) : total all-in ~3038 CHF, effectif ~6.1‰
- *   NE 500k (single, exon 50k) : cantonal ~800 CHF, total Neuchâtel ~1440 CHF, effectif ~2.9‰
+ * Exonérations (célibataire / couple) :
+ *   VS : 25 000 / 50 000
+ *   VD : 50 000 / 50 000
+ *   GE : 82 200 / 164 400
+ *   NE : 50 000 / 100 000
+ *
+ * Valeurs de référence (calibration API) :
+ *   VS 200k single (exon 25k, 175k imposable) : ~618 CHF
+ *   VD 100k single (exon 50k, 50k imposable)  : ~175 CHF
+ *   GE 200k single (exon 82.2k, 117.8k imp.)  : ~322 CHF
+ *   NE 100k single (exon 50k, 50k imposable)  : ~284 CHF
  */
 
 import { describe, it, expect } from 'vitest';
@@ -55,7 +63,7 @@ describe('calculateWealthTax — exonération', () => {
     expect(r.exoneration).toBe(25_000);
   });
 
-  it('VS : fortune 50 000 → impôt > 0 (25 000 imposable × 2‰ × 1.30 = 65 CHF)', () => {
+  it('VS : fortune 50 000 → impôt > 0 (25 000 imposable)', () => {
     const r = calculateWealthTax(50_000, 'VS', 'single');
     expect(r.taxAmountTotal).toBeGreaterThan(0);
     expect(r.taxableWealth).toBe(25_000);
@@ -73,25 +81,26 @@ describe('calculateWealthTax — exonération', () => {
     expect(couple.taxAmountTotal).toBeLessThan(single.taxAmountTotal);
   });
 
-  it('VD : fortune ≤ 59 400 → impôt 0 (célibataire)', () => {
-    const r = calculateWealthTax(59_400, 'VD', 'single');
+  it('VD : fortune ≤ 50 000 → impôt 0 (célibataire)', () => {
+    const r = calculateWealthTax(50_000, 'VD', 'single');
     expect(r.taxAmountTotal).toBe(0);
   });
 
-  it('VD : fortune 100 000 → impôt > 0 (taxable = 40 600)', () => {
+  it('VD : fortune 100 000 → impôt > 0 (taxable = 50 000)', () => {
     const r = calculateWealthTax(100_000, 'VD', 'single');
     expect(r.taxAmountTotal).toBeGreaterThan(0);
-    expect(r.taxableWealth).toBe(40_600);
+    expect(r.taxableWealth).toBe(50_000);
   });
 
-  it('GE : fortune ≤ 25 000 → impôt 0', () => {
-    const r = calculateWealthTax(25_000, 'GE', 'single');
+  it('GE : fortune ≤ 82 200 → impôt 0', () => {
+    const r = calculateWealthTax(82_200, 'GE', 'single');
     expect(r.taxAmountTotal).toBe(0);
   });
 
-  it('GE : fortune 100 000 → impôt > 0 (taxable = 75 000)', () => {
+  it('GE : fortune 100 000 → impôt > 0 (taxable = 17 800)', () => {
     const r = calculateWealthTax(100_000, 'GE', 'single');
     expect(r.taxAmountTotal).toBeGreaterThan(0);
+    expect(r.taxableWealth).toBe(17_800);
   });
 
   it('NE : fortune ≤ 50 000 → impôt 0', () => {
@@ -102,19 +111,19 @@ describe('calculateWealthTax — exonération', () => {
   it('NE : fortune 100 000 → impôt > 0 (taxable = 50 000)', () => {
     const r = calculateWealthTax(100_000, 'NE', 'single');
     expect(r.taxAmountTotal).toBeGreaterThan(0);
+    expect(r.taxableWealth).toBe(50_000);
   });
 });
 
 // ── Cas types VS (Sion, coefficient 1.30) ────────────────────────────────────
 
-describe('calculateWealthTax — VS Sion plausibilité', () => {
-  // taxable 200k = 175k → cantonal: 0-25k×2‰+25k-50k×3‰+50k-75k×4‰+75k-175k×5‰ = 725 CHF
-  // total Sion = 725 × 1.30 = 942.5 → 943 CHF
+describe('calculateWealthTax — VS Sion calibration', () => {
+  // Référence API : VS single 200k → ~618 CHF, VS single 500k → ~2102 CHF
 
-  it('200 000 CHF : impôt total entre 700 et 1 200 CHF', () => {
+  it('200 000 CHF : impôt total entre 400 et 900 CHF (réf API: ~618 CHF)', () => {
     const r = calculateWealthTax(200_000, 'VS', 'single');
-    expect(r.taxAmountTotal).toBeGreaterThan(700);
-    expect(r.taxAmountTotal).toBeLessThan(1_200);
+    expect(r.taxAmountTotal).toBeGreaterThan(400);
+    expect(r.taxAmountTotal).toBeLessThan(900);
   });
 
   it('200 000 CHF : taxAmountTotal ≈ taxAmountCantonal × 1.30 (Sion)', () => {
@@ -122,10 +131,16 @@ describe('calculateWealthTax — VS Sion plausibilité', () => {
     expect(r.taxAmountTotal).toBeCloseTo(r.taxAmountCantonal * 1.30, -1);
   });
 
-  it('500 000 CHF : taux effectif entre 4‰ et 9‰', () => {
+  it('500 000 CHF : impôt total entre 1 500 et 3 000 CHF (réf API: ~2102 CHF)', () => {
     const r = calculateWealthTax(500_000, 'VS', 'single');
-    expect(r.effectiveRatePermille).toBeGreaterThan(4);
-    expect(r.effectiveRatePermille).toBeLessThan(9);
+    expect(r.taxAmountTotal).toBeGreaterThan(1_500);
+    expect(r.taxAmountTotal).toBeLessThan(3_000);
+  });
+
+  it('500 000 CHF : taux effectif entre 3‰ et 7‰', () => {
+    const r = calculateWealthTax(500_000, 'VS', 'single');
+    expect(r.effectiveRatePermille).toBeGreaterThan(3);
+    expect(r.effectiveRatePermille).toBeLessThan(7);
   });
 
   it('1 000 000 CHF : taux effectif supérieur à 500k (progressivité)', () => {
@@ -146,29 +161,33 @@ describe('calculateWealthTax — VS Sion plausibilité', () => {
   });
 });
 
-// ── Cas types VD (Lausanne, coefficient 1.795, plafond 10‰) ─────────────────
+// ── Cas types VD (Lausanne, coefficient 2.334, plafond 10‰) ─────────────────
 
-describe('calculateWealthTax — VD Lausanne plausibilité', () => {
-  // taxable 500k = 440 600 → cantonal: 0-40.6k×1.5‰ + 40.6k-140.6k×2‰ + 140.6k-440.6k×2.5‰
-  //   = 60.9 + 200 + 750 = 1010.9 CHF → ×1.795 = 1814.6 → 1815 CHF
-  //   effectif = 1815/500k × 1000 = 3.63‰
+describe('calculateWealthTax — VD Lausanne calibration', () => {
+  // Référence API : VD single 100k → ~175 CHF, 500k → ~2552 CHF
 
-  it('500 000 CHF : impôt total entre 1 000 et 3 000 CHF', () => {
-    const r = calculateWealthTax(500_000, 'VD', 'single');
-    expect(r.taxAmountTotal).toBeGreaterThan(1_000);
-    expect(r.taxAmountTotal).toBeLessThan(3_000);
+  it('100 000 CHF : impôt total entre 100 et 300 CHF (réf API: ~175 CHF)', () => {
+    const r = calculateWealthTax(100_000, 'VD', 'single');
+    expect(r.taxAmountTotal).toBeGreaterThan(100);
+    expect(r.taxAmountTotal).toBeLessThan(300);
   });
 
-  it('500 000 CHF : taux effectif entre 2‰ et 6‰', () => {
+  it('500 000 CHF : impôt total entre 1 500 et 3 500 CHF (réf API: ~2552 CHF)', () => {
     const r = calculateWealthTax(500_000, 'VD', 'single');
-    expect(r.effectiveRatePermille).toBeGreaterThan(2);
-    expect(r.effectiveRatePermille).toBeLessThan(6);
+    expect(r.taxAmountTotal).toBeGreaterThan(1_500);
+    expect(r.taxAmountTotal).toBeLessThan(3_500);
   });
 
-  it('500 000 CHF : taxAmountTotal ≈ taxAmountCantonal × 1.795', () => {
+  it('500 000 CHF : taux effectif entre 3‰ et 8‰', () => {
+    const r = calculateWealthTax(500_000, 'VD', 'single');
+    expect(r.effectiveRatePermille).toBeGreaterThan(3);
+    expect(r.effectiveRatePermille).toBeLessThan(8);
+  });
+
+  it('500 000 CHF : taxAmountTotal ≈ taxAmountCantonal × 2.334 (Lausanne)', () => {
     const r = calculateWealthTax(500_000, 'VD', 'single');
     if (!r.isCapped) {
-      expect(r.taxAmountTotal).toBeCloseTo(r.taxAmountCantonal * 1.795, -1);
+      expect(r.taxAmountTotal).toBeCloseTo(r.taxAmountCantonal * 2.334, -1);
     }
   });
 
@@ -177,61 +196,72 @@ describe('calculateWealthTax — VD Lausanne plausibilité', () => {
     expect(r.marginalRatePermille).toBe(3.39);
   });
 
-  it('barème VD — max effectif (3.39‰ × 1.795 ≈ 6.09‰) < plafond 10‰ → jamais capé', () => {
-    // Le taux maximum théorique VD + Lausanne est ~6.09‰, inférieur au plafond de 10‰.
-    // Le plafond ne serait atteint qu'avec un coefficient communal très élevé.
+  it('taux max all-in ~7.91‰ < plafond 10‰ → jamais capé à Lausanne', () => {
+    // Taux max all-in = 3.39 × 2.334 ≈ 7.91‰ < 10‰ → plafond jamais atteint.
     const r = calculateWealthTax(50_000_000, 'VD', 'single');
     expect(r.isCapped).toBe(false);
   });
 });
 
-// ── Cas types GE (taux all-in, coefficient 1.00) ─────────────────────────────
+// ── Cas types GE (LIPP-GE × coeff 1.86) ─────────────────────────────────────
 
-describe('calculateWealthTax — GE plausibilité', () => {
-  // taxable 500k = 475k → 0-75k×4.5‰ + 75k-175k×6‰ + 175k-475k×7‰
-  //   = 337.5 + 600 + 2100 = 3037.5 × 1.00 = 3038 CHF → effectif 6.08‰
+describe('calculateWealthTax — GE calibration', () => {
+  // Référence API : GE single 200k → ~322 CHF, 500k → ~1591 CHF
 
-  it('500 000 CHF : taux effectif entre 4‰ et 10‰ (GE haute fiscalité fortune)', () => {
-    const r = calculateWealthTax(500_000, 'GE', 'single');
-    expect(r.effectiveRatePermille).toBeGreaterThan(4);
-    expect(r.effectiveRatePermille).toBeLessThan(10);
+  it('200 000 CHF : impôt total entre 200 et 500 CHF (réf API: ~322 CHF)', () => {
+    const r = calculateWealthTax(200_000, 'GE', 'single');
+    expect(r.taxAmountTotal).toBeGreaterThan(200);
+    expect(r.taxAmountTotal).toBeLessThan(500);
   });
 
-  it('GE : taxAmountTotal = taxAmountCantonal (coeff all-in = 1.00)', () => {
+  it('500 000 CHF : taux effectif entre 2‰ et 6‰ (réf API: ~3.2‰)', () => {
     const r = calculateWealthTax(500_000, 'GE', 'single');
-    expect(r.taxAmountTotal).toBe(r.taxAmountCantonal);
+    expect(r.effectiveRatePermille).toBeGreaterThan(2);
+    expect(r.effectiveRatePermille).toBeLessThan(6);
   });
 
-  it('GE impôt cantonal (sans communal) > VS impôt cantonal à 500k', () => {
-    // GE barème de base plus élevé que VS ; c'est le coefficient VS (1.30) qui fait que
-    // le TOTAL VS > GE total, mais la base cantonale GE est bien supérieure.
-    const ge = calculateWealthTax(500_000, 'GE', 'single');
-    const vs = calculateWealthTax(500_000, 'VS', 'single');
-    expect(ge.taxAmountCantonal).toBeGreaterThan(vs.taxAmountCantonal);
+  it('GE : taxAmountTotal ≈ taxAmountCantonal × 1.86 (coeff communal)', () => {
+    const r = calculateWealthTax(500_000, 'GE', 'single');
+    expect(r.taxAmountTotal).toBeCloseTo(r.taxAmountCantonal * 1.86, -1);
+  });
+
+  it('GE : fortune ≥ 164 400 couple → impôt > 0', () => {
+    const r = calculateWealthTax(200_000, 'GE', 'couple');
+    expect(r.taxAmountTotal).toBeGreaterThan(0);
+  });
+
+  it('GE : pas de plafond fortune', () => {
+    const r = calculateWealthTax(10_000_000, 'GE', 'single');
+    expect(r.isCapped).toBe(false);
   });
 });
 
 // ── Cas types NE ──────────────────────────────────────────────────────────────
 
-describe('calculateWealthTax — NE Neuchâtel plausibilité', () => {
-  // taxable 500k = 450k → 0-50k×1‰ + 50k-150k×1.5‰ + 150k-450k×2‰
-  //   = 50 + 150 + 600 = 800 CHF × 1.80 = 1440 CHF → effectif 2.88‰
+describe('calculateWealthTax — NE Neuchâtel calibration', () => {
+  // Référence API : NE single 100k → ~284 CHF, 500k → ~3402 CHF
 
-  it('500 000 CHF : impôt total entre 800 et 2 500 CHF', () => {
-    const r = calculateWealthTax(500_000, 'NE', 'single');
-    expect(r.taxAmountTotal).toBeGreaterThan(800);
-    expect(r.taxAmountTotal).toBeLessThan(2_500);
+  it('100 000 CHF : impôt total entre 200 et 400 CHF (réf API: ~284 CHF)', () => {
+    const r = calculateWealthTax(100_000, 'NE', 'single');
+    expect(r.taxAmountTotal).toBeGreaterThan(200);
+    expect(r.taxAmountTotal).toBeLessThan(400);
   });
 
-  it('500 000 CHF : taux effectif entre 1‰ et 5‰', () => {
+  it('500 000 CHF : impôt total entre 2 500 et 4 500 CHF (réf API: ~3402 CHF)', () => {
     const r = calculateWealthTax(500_000, 'NE', 'single');
-    expect(r.effectiveRatePermille).toBeGreaterThan(1);
-    expect(r.effectiveRatePermille).toBeLessThan(5);
+    expect(r.taxAmountTotal).toBeGreaterThan(2_500);
+    expect(r.taxAmountTotal).toBeLessThan(4_500);
   });
 
-  it('NE : taxAmountTotal ≈ taxAmountCantonal × 1.80 (Neuchâtel-Ville)', () => {
+  it('500 000 CHF : taux effectif entre 4‰ et 9‰', () => {
     const r = calculateWealthTax(500_000, 'NE', 'single');
-    expect(r.taxAmountTotal).toBeCloseTo(r.taxAmountCantonal * 1.80, -1);
+    expect(r.effectiveRatePermille).toBeGreaterThan(4);
+    expect(r.effectiveRatePermille).toBeLessThan(9);
+  });
+
+  it('NE : taxAmountTotal ≈ taxAmountCantonal × 1.889 (Neuchâtel-Ville)', () => {
+    const r = calculateWealthTax(500_000, 'NE', 'single');
+    expect(r.taxAmountTotal).toBeCloseTo(r.taxAmountCantonal * 1.889, -1);
   });
 });
 
@@ -293,5 +323,10 @@ describe('calculateWealthTax — cohérence', () => {
   it('marginalRatePermille > 0 si fortune > seuil d\'exonération', () => {
     const r = calculateWealthTax(100_000, 'VS', 'single');
     expect(r.marginalRatePermille).toBeGreaterThan(0);
+  });
+
+  it('VS Sion: coefficient 1.30 appliqué (total = cantonal × 1.30)', () => {
+    const r = calculateWealthTax(500_000, 'VS', 'single');
+    expect(r.taxAmountTotal).toBeCloseTo(r.taxAmountCantonal * 1.30, -1);
   });
 });

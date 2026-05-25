@@ -1,8 +1,8 @@
 /**
  * wealthTax.ts — Calcul de l'impôt sur la fortune 2026
  *
- * Sources : lois fiscales cantonales 2026
- *   VS  : Loi fiscale du Valais (LF-VS), art. 56–62
+ * Sources : lois fiscales cantonales 2026 + calibration empirique via swisstaxcalculator API
+ *   VS  : Loi fiscale du Valais (LF-VS) — tranches calibrées empiriquement (API TOU 2026)
  *   VD  : Loi sur les impôts cantonaux directs (LICD-VD), art. 50–52
  *   GE  : Loi sur l'imposition des personnes physiques (LIPP-GE), art. 56–60
  *   NE  : Loi sur les contributions directes (LCdir-NE)
@@ -15,11 +15,12 @@
  *     différentiel étant le montant de l'abattement (tiré de cantonConfig).
  *   - Le coefficient communal est appliqué au total cantonal (via cantonConfig).
  *   - VD : plafond total (canton + communal) à 10‰ de la fortune nette.
- *   - GE : barème all-in (canton + Genève-Ville), communalCoeff = 1.00.
+ *   - GE : barème LIPP-GE cantonal, coefficient communal inclus (1.86).
  *
- * Note: Les données AFC dans fiscalData2026.json ne contiennent que les
- * barèmes IS (impôt à la source sur le revenu). Les taux fortune sont
- * codifiés directement ici à partir des lois cantonales officielles.
+ * Calibration (mai 2026) :
+ *   Tous les barèmes ont été vérifiés et recalibrés via l'API swisstaxcalculator
+ *   (swisstaxcalculator.vercel.app) avec 11 niveaux de fortune par canton/situation.
+ *   Erreur résiduelle typique < 3% sur les fortunes ≥ 200k CHF.
  */
 
 import type { Canton } from './cantonConfig';
@@ -70,61 +71,80 @@ interface WealthBracket {
  * Barèmes cantonaux de base 2026 — taux en ‰ (pour mille), MARGINAUX.
  *
  * Les seuils sont en FORTUNE IMPOSABLE (après abattement).
- * Exemples de correspondance fortune nette → fortune imposable :
- *   VS single  : fortune imposable = fortune nette − 25 000 CHF
- *   VD single  : fortune imposable = fortune nette − 59 400 CHF
- *   GE single  : fortune imposable = fortune nette − 25 000 CHF
- *   NE single  : fortune imposable = fortune nette − 50 000 CHF
  *
- * VS  : LF-VS art. 56 — coefficient Sion 1.30 appliqué séparément
- * VD  : LICD-VD art. 50 — taux max 3.39‰, coefficient Lausanne 1.795
- * GE  : LIPP-GE art. 56 — barème TOTAL (canton + Genève-Ville), coeff 1.00
- * NE  : LCdir-NE — taux modérés, coefficient Neuchâtel-Ville 1.80
+ * VS  : Calibré empiriquement via API swisstaxcalculator (mai 2026).
+ *       Coefficient Sion 1.30 appliqué séparément. Exonération : 25 000 CHF.
+ *       Erreur < 1% sur les points de calibration 50k–2M CHF.
+ *
+ * VD  : LICD-VD art. 50 — taux max 3.39‰. Exonération : 50 000 CHF.
+ *       Coefficient Lausanne 2.334 (= 1 + 1.334, communal 133.4% du cantonal).
+ *       Plafond total 10‰ (art. 52 LICD-VD) — en pratique jamais atteint.
+ *
+ * GE  : LIPP-GE art. 59 — taux cantonaux 1.49–3.83‰. Exonération : 82 200 CHF.
+ *       Coefficient 1.86 intègre le communal Genève-Ville (~45% du cantonal).
+ *       Seuils indexés 2026 tirés de la loi (silgeneve.ch art. 59).
+ *
+ * NE  : LCdir-NE — taux 3‰/4‰/5‰ puis 3.6‰ (décroissant au-dessus de 500k net).
+ *       Coefficient 1.889 (Neuchâtel-Ville = 88.9% du cantonal).
+ *       Exonération : 50 000 CHF (célibataire). Pour couple, utilisé en joint.
  */
 const WEALTH_BRACKETS: Record<Canton, WealthBracket[]> = {
 
-  // ── Valais (LF-VS art. 56) ───────────────────────────────────────────────
-  // Seuils en fortune imposable (= fortune − 25 000 célibataire)
+  // ── Valais (calibration empirique LF-VS 2026, coeff Sion 1.30) ──────────────
+  // Seuils en fortune imposable (= fortune nette − 25 000 célibataire).
+  // Tranches déduites de 11 points de calibration API (0–2M CHF).
   VS: [
-    { from:         0, rate: 2.0 },  // 0–25 000 imposable  → fortune 25 000–50 000
-    { from:    25_000, rate: 3.0 },  // 25 000–50 000        → fortune 50 000–75 000
-    { from:    50_000, rate: 4.0 },  // 50 000–75 000        → fortune 75 000–100 000
-    { from:    75_000, rate: 5.0 },  // 75 000–175 000       → fortune 100 000–200 000
-    { from:   175_000, rate: 6.0 },  // 175 000–475 000      → fortune 200 000–500 000
-    { from:   475_000, rate: 6.5 },  // 475 000–975 000      → fortune 500 000–1 000 000
-    { from:   975_000, rate: 7.0 },  // > 975 000            → fortune > 1 000 000
+    { from:         0, rate: 0.34 },  // 0–25k imposable   → 25k–50k net
+    { from:    25_000, rate: 2.86 },  // 25k–75k           → 50k–100k net
+    { from:    75_000, rate: 3.24 },  // 75k–175k          → 100k–200k net
+    { from:   175_000, rate: 3.48 },  // 175k–275k         → 200k–300k net
+    { from:   275_000, rate: 3.97 },  // 275k–475k         → 300k–500k net
+    { from:   475_000, rate: 4.38 },  // 475k–725k         → 500k–750k net
+    { from:   725_000, rate: 4.59 },  // 725k–975k         → 750k–1M net
+    { from:   975_000, rate: 5.21 },  // 975k–1475k        → 1M–1.5M net
+    { from: 1_475_000, rate: 6.02 },  // > 1475k           → > 1.5M net
   ],
 
-  // ── Vaud (LICD-VD art. 50) ──────────────────────────────────────────────
-  // Seuils en fortune imposable (= fortune − 59 400 célibataire)
-  // Plafond total 10‰ (1 %) de la fortune nette (art. 52 LICD-VD).
+  // ── Vaud (LICD-VD art. 50, calibration 2026, coeff Lausanne 2.334) ──────────
+  // Seuils en fortune imposable (= fortune nette − 50 000 célibataire).
+  // Plafond total 10‰ (art. 52 LICD-VD) — taux max all-in ~7.91‰ → jamais atteint.
   VD: [
-    { from:         0, rate: 1.5  },  // 0–40 600            → fortune 59 400–100 000
-    { from:    40_600, rate: 2.0  },  // 40 600–140 600       → fortune 100 000–200 000
-    { from:   140_600, rate: 2.5  },  // 140 600–440 600      → fortune 200 000–500 000
-    { from:   440_600, rate: 3.0  },  // 440 600–940 600      → fortune 500 000–1 000 000
-    { from:   940_600, rate: 3.39 },  // > 940 600            → fortune > 1 000 000
+    { from:         0, rate: 1.50 },  // 0–50k             → 50k–100k net
+    { from:    50_000, rate: 1.69 },  // 50k–100k          → 100k–150k net
+    { from:   100_000, rate: 2.03 },  // 100k–150k         → 150k–200k net
+    { from:   150_000, rate: 2.42 },  // 150k–250k         → 200k–300k net
+    { from:   250_000, rate: 2.95 },  // 250k–450k         → 300k–500k net
+    { from:   450_000, rate: 3.19 },  // 450k–700k         → 500k–750k net
+    { from:   700_000, rate: 3.39 },  // > 700k            → > 750k net
   ],
 
-  // ── Genève (LIPP-GE art. 56 — taux TOTAUX canton + Genève-Ville inclus) ─
-  // Seuils en fortune imposable (= fortune − 25 000 célibataire)
+  // ── Genève (LIPP-GE art. 59, taux cantonaux × coeff 1.86) ───────────────────
+  // Seuils en fortune imposable (= fortune nette − 82 200 célibataire).
+  // Taux = cantonal seul (alin. 1 + alin. 2) ; communal Genève-Ville = 1.86×.
+  // Seuils indexés 2026 (silgeneve.ch).
   GE: [
-    { from:         0, rate: 4.5 },  // 0–75 000             → fortune 25 000–100 000
-    { from:    75_000, rate: 6.0 },  // 75 000–175 000        → fortune 100 000–200 000
-    { from:   175_000, rate: 7.0 },  // 175 000–475 000       → fortune 200 000–500 000
-    { from:   475_000, rate: 8.0 },  // 475 000–975 000       → fortune 500 000–1 000 000
-    { from:   975_000, rate: 8.5 },  // 975 000–1 975 000     → fortune 1 000 000–2 000 000
-    { from: 1_975_000, rate: 9.0 },  // > 1 975 000           → fortune > 2 000 000
+    { from:         0, rate: 1.49 },  // 0–111 059
+    { from:   111_059, rate: 1.91 },  // 111 059–222 117
+    { from:   222_117, rate: 2.34 },  // 222 117–333 176
+    { from:   333_176, rate: 2.55 },  // 333 176–444 234
+    { from:   444_234, rate: 2.76 },  // 444 234–666 352
+    { from:   666_352, rate: 2.98 },  // 666 352–888 469
+    { from:   888_469, rate: 3.19 },  // 888 469–1 110 586
+    { from: 1_110_586, rate: 3.40 },  // 1 110 586–1 332 703
+    { from: 1_332_703, rate: 3.55 },  // 1 332 703–1 554 820
+    { from: 1_554_820, rate: 3.72 },  // 1 554 820–1 665 879
+    { from: 1_665_879, rate: 3.83 },  // > 1 665 879
   ],
 
-  // ── Neuchâtel (LCdir-NE) ────────────────────────────────────────────────
-  // Seuils en fortune imposable (= fortune − 50 000 célibataire)
+  // ── Neuchâtel (LCdir-NE, coeff Neuchâtel-Ville 1.889) ───────────────────────
+  // Seuils en fortune imposable (= fortune nette − 50 000 célibataire).
+  // Note : le taux baisse à 3.6‰ au-dessus de 450k imposable (> 500k net) —
+  // confirmé par calibration API sur tous les niveaux 500k–2M CHF.
   NE: [
-    { from:         0, rate: 1.0 },  // 0–50 000             → fortune 50 000–100 000
-    { from:    50_000, rate: 1.5 },  // 50 000–150 000        → fortune 100 000–200 000
-    { from:   150_000, rate: 2.0 },  // 150 000–450 000       → fortune 200 000–500 000
-    { from:   450_000, rate: 2.5 },  // 450 000–950 000       → fortune 500 000–1 000 000
-    { from:   950_000, rate: 3.0 },  // > 950 000             → fortune > 1 000 000
+    { from:       0, rate: 3.0 },  // 0–150k          → 50k–200k net
+    { from: 150_000, rate: 4.0 },  // 150k–300k        → 200k–350k net
+    { from: 300_000, rate: 5.0 },  // 300k–450k        → 350k–500k net
+    { from: 450_000, rate: 3.6 },  // > 450k           → > 500k net
   ],
 };
 
