@@ -26,6 +26,16 @@ export interface UserProfile {
    * Ignoré si situation !== 'couple'.
    */
   coupleIncomeType?: "single" | "dual";
+  /**
+   * Taxation Ordinaire Ultérieure (TOU) — uniquement pertinent pour permis B.
+   *
+   * false (défaut) : l'impôt est prélevé à la source (IS), barème AFC officiel.
+   * true           : l'utilisateur demande la TOU et dépose une déclaration ordinaire.
+   *                  Le calcul bascule sur le barème ordinaire avec déductions réelles.
+   *
+   * Voir src/utils/calculateTax.ts et docs/impot-a-la-source.md.
+   */
+  useTOU?: boolean;
 }
 
 // Action Types

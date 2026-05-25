@@ -15,6 +15,7 @@ const defaultProfile: UserProfile = {
   has3a: 'no',
   fortune: 0,
   coupleIncomeType: 'single',
+  useTOU: false,
 };
 
 export const useProfileStore = create<ProfileStore>()(

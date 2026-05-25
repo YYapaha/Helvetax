@@ -46,6 +46,7 @@ function Onboarding({ onComplete }: { onComplete: (data: any) => void }) {
   const [children, setChildren]         = useState(0);
   const [conjointPermit, setConjointPermit] = useState<'B' | 'C' | 'CH'>('B');
   const [coupleIncomeType, setCoupleIncomeType] = useState<'single' | 'dual'>('single');
+  const [useTOU, setUseTOU] = useState(false);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,6 +62,7 @@ function Onboarding({ onComplete }: { onComplete: (data: any) => void }) {
       conjoint_permit: sit === 'couple' ? conjointPermit : '',
       fortune: fortune ? cleanNumber(fortune) : 0,
       coupleIncomeType: sit === 'couple' ? coupleIncomeType : 'single',
+      useTOU: permit === 'B' ? useTOU : false,
     });
   };
 
@@ -210,6 +212,34 @@ function Onboarding({ onComplete }: { onComplete: (data: any) => void }) {
               ))}
             </div>
           </div>
+
+          {/* TOU — permis B uniquement */}
+          {permit === 'B' && (
+            <div>
+              <label style={labelStyle}>Régime d'imposition</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <button type="button" onClick={() => setUseTOU(false)}
+                  style={{ padding: '10px 8px', borderRadius: 12, fontSize: 13, cursor: 'pointer', transition: 'all 150ms', ...toggleStyle(!useTOU) }}>
+                  IS — Source
+                  <span style={{ display: 'block', fontSize: 10, opacity: 0.65, marginTop: 2, fontWeight: 400 }}>prélevé par l'employeur</span>
+                </button>
+                <button type="button" onClick={() => setUseTOU(true)}
+                  style={{ padding: '10px 8px', borderRadius: 12, fontSize: 13, cursor: 'pointer', transition: 'all 150ms', ...toggleStyle(useTOU) }}>
+                  TOU — Ordinaire
+                  <span style={{ display: 'block', fontSize: 10, opacity: 0.65, marginTop: 2, fontWeight: 400 }}>déclaration + déductions</span>
+                </button>
+              </div>
+              {useTOU ? (
+                <p style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6, lineHeight: 1.5, margin: '6px 0 0' }}>
+                  TOU active : l'impôt sera calculé sur ton revenu après déductions (3a, frais pro…). Tu devras déposer une déclaration ordinaire chaque année.
+                </p>
+              ) : (
+                <p style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 6, lineHeight: 1.5, margin: '6px 0 0' }}>
+                  IS standard : l'employeur prélève l'impôt directement sur ton salaire. Tu peux passer en TOU si tu as des déductions importantes (3a, frais pro…).
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Revenu */}
           <div>
